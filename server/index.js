@@ -1152,14 +1152,33 @@ app.get("/api/government/dashboard", async (req, res) => {
       db.collection("disease_reports").find().toArray(),
       db.collection("biosecurity_assessments").find().sort({ createdAt: -1 }).toArray(),
     ]);
+    const farmsById = new Map();
+    farms.forEach(farm => {
+      for (const id of [farm.farmId, farm.id, farm._id?.toString()].filter(Boolean)) farmsById.set(String(id), farm);
+    });
     const latestBio = {};
     assessments.forEach(a => { if (!latestBio[a.farmId]) latestBio[a.farmId] = a; });
     const riskCounts = { HIGH: 0, MODERATE: 0, LOW: 0 };
     Object.values(latestBio).forEach(a => { riskCounts[a.riskLevel] = (riskCounts[a.riskLevel] || 0) + 1; });
     const activeOutbreaks = reports.filter(r => !["RESOLVED","RULED_OUT"].includes(r.status));
     const districtMap = {};
-    activeOutbreaks.forEach(r => { districtMap[r.farmId] = (districtMap[r.farmId] || 0) + 1; });
-    const totalAffected = activeOutbreaks.reduce((s, r) => s + (r.affectedAnimals || 0), 0);
+    activeOutbreaks.forEach(report => {
+      const farm = farmsById.get(String(report.farmId || ""));
+      const district = report.district || farm?.district || "District not recorded";
+      const entry = districtMap[district] || (districtMap[district] = { district, reports: 0, affectedAnimals: 0 });
+      entry.reports += 1;
+      entry.affectedAnimals += Number(report.affectedAnimals) || 0;
+    });
+    const totalAffected = activeOutbreaks.reduce((s, r) => s + (Number(r.affectedAnimals) || 0), 0);
+    const recentReports = activeOutbreaks.slice().sort((a, b) => new Date(b.createdAt || b.reportDate || 0) - new Date(a.createdAt || a.reportDate || 0)).slice(0, 10).map(report => {
+      const farm = farmsById.get(String(report.farmId || ""));
+      return {
+        ...report,
+        farmName: report.farmName || farm?.farmName || farm?.name || "Farm not linked",
+        district: report.district || farm?.district || "District not recorded",
+        diseaseName: report.diseaseName || report.disease || report.diseaseType || "Disease report",
+      };
+    });
     res.json({
       totalFarms: farms.length,
       totalSuspectedOutbreaks: reports.length,
@@ -1168,7 +1187,8 @@ app.get("/api/government/dashboard", async (req, res) => {
       moderateRiskFarms: riskCounts.MODERATE,
       lowRiskFarms: riskCounts.LOW,
       affectedAnimals: totalAffected,
-      recentReports: activeOutbreaks.slice(0, 10)
+      activeReportsByDistrict: Object.values(districtMap).sort((a, b) => b.reports - a.reports),
+      recentReports,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1182,6 +1202,66 @@ app.get("/api/government/outbreaks", async (req, res) => {
     if (req.query.animalType) filter.animalType = req.query.animalType;
     const docs = await db.collection("disease_reports").find(filter).sort({ createdAt: -1 }).toArray();
     res.json(docs);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/government/advisories
+app.get("/api/government/advisories", async (req, res) => {
+  try {
+    const collection = db.collection("government_alerts");
+    let advisories = await collection.find({ advisoryId: { $exists: true } }).toArray();
+    if (advisories.length === 0) {
+      const farms = await db.collection("farms").find({}).toArray();
+      const districts = [...new Set(farms.map(farm => farm.district).filter(Boolean))];
+      const farmNames = [...new Set(farms.map(farm => farm.farmName || farm.name).filter(Boolean))];
+      const templates = [
+        { title: "Biosecurity Entry Control", priority: "High", message: "Review visitor logs, restrict non-essential entry, and ensure dedicated footwear and hand sanitation at farm entrances." },
+        { title: "Vaccination Schedule Review", priority: "Critical", message: "Check vaccination records for all livestock and arrange any overdue doses with the assigned veterinarian." },
+        { title: "Daily Disease Monitoring", priority: "High", message: "Record unusual illness or mortality daily and report suspected notifiable disease promptly to the veterinary authority." },
+        { title: "Feed and Water Hygiene", priority: "Medium", message: "Protect feed from pests and contamination, and clean and inspect drinking water equipment regularly." },
+        { title: "Animal Movement Records", priority: "Medium", message: "Keep movement records current and verify animal health documentation before bringing animals onto the farm." },
+        { title: "Poultry House Wild Bird Protection", priority: "High", message: "Inspect poultry-house screens and roofs, prevent wild bird access to feed and water, and report sudden mortality." },
+        { title: "Waste and Carcass Disposal", priority: "Medium", message: "Use the approved disposal procedure for manure, waste, and carcasses, and keep disposal areas away from animal housing." },
+      ];
+      const issuedAt = new Date();
+      advisories = templates.map((item, index) => ({
+        advisoryId: `ADV-BASE-${index + 1}`,
+        ...item,
+        district: districts.length ? districts[index % districts.length] : "All Districts",
+        farmName: farmNames.length ? farmNames[index % farmNames.length] : "All registered farms",
+        farmId: farms.length ? (farms[index % farms.length].farmId || String(farms[index % farms.length]._id || "")) : "",
+        status: index < 2 ? "Active" : "Inactive",
+        issuedBy: "Government Officer",
+        issuedDate: new Date(issuedAt.getTime() - index * 86400000).toISOString(),
+        expiryDate: "",
+        createdAt: new Date(issuedAt.getTime() - index * 86400000),
+        updatedAt: issuedAt,
+        seeded: true,
+      }));
+      await collection.insertMany(advisories);
+    }
+    advisories.sort((a, b) => new Date(b.issuedDate || b.createdAt || 0) - new Date(a.issuedDate || a.createdAt || 0));
+    const [totalAdvisories, activeAdvisories] = await Promise.all([
+      collection.countDocuments({ advisoryId: { $exists: true } }),
+      collection.countDocuments({ advisoryId: { $exists: true }, status: "Active" }),
+    ]);
+    res.json({ advisories, totalAdvisories, activeAdvisories });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/government/advisories/:advisoryId
+app.put("/api/government/advisories/:advisoryId", async (req, res) => {
+  try {
+    const allowedFields = ["title", "message", "district", "priority", "status", "issuedDate", "expiryDate", "issuedBy"];
+    const updates = Object.fromEntries(allowedFields.filter(key => req.body[key] !== undefined).map(key => [key, req.body[key]]));
+    if (updates.status && !["Active", "Inactive"].includes(updates.status)) {
+      return res.status(400).json({ error: "Advisory status must be Active or Inactive" });
+    }
+    updates.updatedAt = new Date();
+    const collection = db.collection("government_alerts");
+    const result = await collection.updateOne({ advisoryId: req.params.advisoryId }, { $set: updates });
+    if (!result.matchedCount) return res.status(404).json({ error: "Advisory not found" });
+    res.json(await collection.findOne({ advisoryId: req.params.advisoryId }));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

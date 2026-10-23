@@ -4,6 +4,8 @@ import { formatDate, formatTime } from "../utils/dateTime";
 import { API_BASE } from "../api/mongoService";
 import FarmManagementModule from "./modules/FarmManagementModule";
 import GovernmentFarmMonitoringModule from "./modules/GovernmentFarmMonitoringModule";
+import GovernmentAdvisoriesModule from "./modules/GovernmentAdvisoriesModule";
+import GovernmentDashboardModule from "./modules/GovernmentDashboardModule";
 import {
   AreaChart,
   Area,
@@ -638,7 +640,7 @@ function BiosecurityGauge({ score }) {
     /* @__PURE__ */ jsx("span", { className: "text-xs font-semibold px-3 py-1 rounded-full", style: { background: `${color}18`, color }, children: label })
   ] });
 }
-function WeatherWidget({ coordinates = null, locationName = "Current location", locationQuery = "" }) {
+function WeatherWidget({ coordinates = null, locationName = "Current location", districtName = "", locationQuery = "" }) {
   const [location, setLocation] = useState(coordinates);
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -809,7 +811,7 @@ function WeatherWidget({ coordinates = null, locationName = "Current location", 
       /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
         /* @__PURE__ */ jsx("p", { className: "text-white text-xs opacity-70 truncate", children: locationName || weather?.locationName || "Current location" }),
         /* @__PURE__ */ jsx("p", { className: "text-white text-xs opacity-70 mt-1", children: `Today · ${new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(new Date())}` }),
-        current ? /* @__PURE__ */ jsx("p", { className: "text-white font-bold text-2xl", style: { fontFamily: "Poppins" }, children: `${Math.round(current.temperature)}°C` }) : /* @__PURE__ */ jsx("p", { className: "text-white text-sm font-medium mt-1", children: loading ? loadingMessage : "Weather unavailable" }),
+        current ? /* @__PURE__ */ jsx("p", { className: "text-white font-bold text-2xl", style: { fontFamily: "Poppins" }, children: `${Math.round(current.temperature)}°C` }) : /* @__PURE__ */ jsx("p", { className: "text-white text-sm font-medium mt-1", children: loading ? districtName || loadingMessage : "Weather unavailable" }),
         current && /* @__PURE__ */ jsx("p", { className: "text-white text-xs opacity-80 mt-0.5 capitalize", children: current.description })
       ] }),
       /* @__PURE__ */ jsx(WeatherIcon, { className: "w-12 h-12 text-yellow-300 opacity-90 flex-shrink-0" })
@@ -1481,7 +1483,7 @@ function FarmerDashboardPage({ user, farms = [], livestock = [], vaccinations = 
   const farmCoordinates = locatedFarm ? { latitude: Number(locatedFarm.latitude), longitude: Number(locatedFarm.longitude) } : null;
   const weatherState = farms[0]?.state || user?.state || user?.extra?.State || "";
   const weatherDistrict = farms[0]?.district || user?.district || user?.extra?.District || "";
-  const weatherLocationName = weatherState || weatherDistrict || "State not set";
+  const weatherLocationName = weatherState || "State not set";
   const weatherLocationQuery = [weatherDistrict, weatherState, user?.country || user?.extra?.Country || "India"].filter(Boolean).join(", ");
   const totalAnimals = livestock.reduce((total, animal) => {
     if (animal.quantity === undefined || animal.quantity === null || animal.quantity === "") return total + 1;
@@ -1516,7 +1518,7 @@ function FarmerDashboardPage({ user, farms = [], livestock = [], vaccinations = 
           /* @__PURE__ */ jsx("h3", { className: "font-semibold text-sm mb-3", style: { fontFamily: "Poppins", color: P.dark }, children: "Biosecurity Score" }),
           latestScore === null ? /* @__PURE__ */ jsx("p", { className: "text-xs text-center py-4", style: { color: P.mid }, children: "No assessment data available." }) : /* @__PURE__ */ jsx(BiosecurityGauge, { score: latestScore })
         ] }),
-        /* @__PURE__ */ jsx(WeatherWidget, { locationName: weatherLocationName, locationQuery: weatherLocationQuery })
+        /* @__PURE__ */ jsx(WeatherWidget, { locationName: weatherLocationName, districtName: weatherDistrict, locationQuery: weatherLocationQuery })
       ] })
     ] })
   ] });
@@ -3478,7 +3480,7 @@ const navConfig = {
     color: "#0d1a2d",
     accent: P.info,
     title: "Gov't Portal",
-    items: [{ key: "Dashboard", labelKey: "dashboard", label: "Dashboard", icon: Home }, { key: "Farm Monitoring", labelKey: "farmMonitoring", label: "Farm Monitoring", icon: Eye }, { key: "Disease Surveillance", labelKey: "diseaseSurveillance", label: "Disease Surveillance", icon: Activity }, { key: "GIS Dashboard", labelKey: "gisDashboard", label: "GIS Dashboard", icon: Map }, { key: "Compliance", labelKey: "compliance", label: "Compliance", icon: CheckCircle }, { key: "Analytics", labelKey: "analytics", label: "Analytics", icon: BarChart2 }, { key: "Reports", labelKey: "reports", label: "Reports", icon: FileText }, { key: "Advisories", labelKey: "advisories", label: "Advisories", icon: Flag }, { key: "Profile", labelKey: "profile", label: "Profile", icon: User }]
+    items: [{ key: "Dashboard", labelKey: "dashboard", label: "Dashboard", icon: Home }, { key: "Farm Monitoring", labelKey: "farmMonitoring", label: "Farm Monitoring", icon: Eye }, { key: "Disease Surveillance", labelKey: "diseaseSurveillance", label: "Disease Surveillance", icon: Activity }, { key: "GIS Dashboard", labelKey: "gisDashboard", label: "GIS Dashboard", icon: Map }, { key: "Reports", labelKey: "reports", label: "Reports", icon: FileText }, { key: "Advisories", labelKey: "advisories", label: "Advisories", icon: Flag }, { key: "Profile", labelKey: "profile", label: "Profile", icon: User }]
   },
   admin: {
     color: "#1a2010",
@@ -3539,21 +3541,17 @@ function renderPage(role, module, user, data = {}, language = "en", onNavigate) 
   if (role === "government") {
     switch (module) {
       case "Dashboard":
-        return /* @__PURE__ */ jsx(GovDashboardPage, {});
+        return /* @__PURE__ */ jsx(GovernmentDashboardModule, { farms: data.farms || [], reports: data.govOutbreaks || [] });
       case "Farm Monitoring":
         return /* @__PURE__ */ jsx(FarmMonitoringPage, { user });
       case "Disease Surveillance":
         return /* @__PURE__ */ jsx(DiseaseSurveillancePage, {});
       case "GIS Dashboard":
         return /* @__PURE__ */ jsx(GISModulePage, {});
-      case "Compliance":
-        return /* @__PURE__ */ jsx(ComplianceDashboardPage, {});
-      case "Analytics":
-        return /* @__PURE__ */ jsx(GovAnalyticsPage, {});
       case "Reports":
         return /* @__PURE__ */ jsx(ReportsPage, {});
       case "Advisories":
-        return /* @__PURE__ */ jsx(AdvisoriesPage, {});
+        return /* @__PURE__ */ jsx(GovernmentAdvisoriesModule, { farms: data.farms || [], user });
       case "Profile":
         return /* @__PURE__ */ jsx(LiveProfilePage, { role, user, language });
     }
@@ -3614,8 +3612,8 @@ function DashboardShell({ role, onLogout, user, data = {}, language = "en" }) {
     "Disease Database": "diseaseDatabase",
     "System Settings": "systemSettings"
   };
-  const activeModuleLabel = t(language, moduleKeyMap[activeModule] || activeModule, activeModule);
   const navItems = cfg.items.map((item) => ({ ...item, label: t(language, item.labelKey || moduleKeyMap[item.label] || item.label, item.label) }));
+  const activeModuleLabel = navItems.find((item) => item.key === activeModule)?.label || activeModule;
   return /* @__PURE__ */ jsxs("div", { className: "flex h-screen overflow-hidden", style: { background: P.ivory, fontFamily: "Inter" }, children: [
     /* @__PURE__ */ jsxs("div", { className: `flex flex-col transition-all duration-300 flex-shrink-0 ${sidebarOpen ? "w-56" : "w-14"}`, style: { background: cfg.color }, children: [
       /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3 p-4 mb-2", children: [

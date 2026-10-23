@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
-import { Stethoscope, ClipboardList, CheckCircle, AlertTriangle, MapPin, FlaskConical, RefreshCw, Map, ExternalLink } from "lucide-react";
+import { Stethoscope, ClipboardList, CheckCircle, AlertTriangle, MapPin, FlaskConical, RefreshCw, Map } from "lucide-react";
 import { getDiseaseReports, updateDiseaseStatus, updateDiseaseInspection, getFarms } from "../../api/mongoService";
 import { formatDate, getLocalDateInputValue } from "../../utils/dateTime";
-
-const POWERBI_URL = "https://app.powerbi.com/reportEmbed";
 
 const P = {
   red: "#C62828", redBg: "#fef2f2",
@@ -21,32 +19,6 @@ const STATUS_COLOR = {
   REPORTED: P.blue, UNDER_REVIEW: P.yellow, VETERINARY_INSPECTION: P.purple,
   CONFIRMED: P.red, RULED_OUT: P.green, RESOLVED: P.gray,
 };
-
-// -- Power BI Banner --------------------------------------------------------
-function PowerBIBanner() {
-  return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"linear-gradient(135deg,#f0ebff,#e8f4ff)", border:"1.5px solid #c4b5fd", borderRadius:12, padding:"12px 16px", marginBottom:16, flexWrap:"wrap", gap:10 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <div style={{ width:32, height:32, borderRadius:8, background:"#f2c811", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <rect x="2" y="12" width="4" height="10" rx="1" fill="#333"/>
-            <rect x="8" y="7" width="4" height="15" rx="1" fill="#333"/>
-            <rect x="14" y="3" width="4" height="19" rx="1" fill="#333"/>
-            <rect x="20" y="9" width="2" height="13" rx="1" fill="#333"/>
-          </svg>
-        </div>
-        <div>
-          <p style={{ fontSize:12, fontWeight:700, color:P.dark, margin:0 }}>Advanced Analytics - Power BI</p>
-          <p style={{ fontSize:11, color:P.gray, margin:0 }}>View inspection trends, disease heatmaps and compliance reports</p>
-        </div>
-      </div>
-      <a href={POWERBI_URL} target="_blank" rel="noopener noreferrer"
-        style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:10, background:"#f2c811", color:P.dark, fontWeight:700, fontSize:12, textDecoration:"none", flexShrink:0, whiteSpace:"nowrap" }}>
-        Open in Power BI <ExternalLink size={13} />
-      </a>
-    </div>
-  );
-}
 
 // -- Assigned Farms Map -----------------------------------------------------
 function latLonToXY(lat, lon, bounds, W, H) {
@@ -359,9 +331,6 @@ export default function VetInspectionModule({ user }) {
           <RefreshCw size={14} color={P.gray} />
         </button>
       </div>
-
-      {/* Power BI Banner */}
-      <PowerBIBanner />
 
       {/* KPIs */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:16 }}>

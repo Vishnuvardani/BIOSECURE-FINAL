@@ -2,9 +2,7 @@
  * BioSecure Farm - API Service
  * Fetches data from the configured Express API -> MongoDB.
  */
-const localApiBase = typeof window === "undefined"
-  ? "http://localhost:5000/api"
-  : `${window.location.protocol}//${window.location.hostname}:5000/api`;
+const localApiBase = typeof window === "undefined" ? "http://localhost:5000/api" : "/api";
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL || localApiBase).replace(/\/+$/, "");
 const BASE = API_BASE;
 

@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { Ionicons } from '@expo/vector-icons';
 import { analyticsAPI } from '../../services/api';
 import { Header, Card, Loader } from '../../components/UIComponents';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../theme';
 
 const { width } = Dimensions.get('window');
 
-const POWER_BI_EMBED_URL = 'https://app.powerbi.com/reportEmbed?reportId=<YOUR_REPORT_ID>&autoAuth=true&ctid=<YOUR_TENANT_ID>';
-
-const TABS = ['Charts', 'Power BI', 'District'];
+const TABS = ['Charts', 'District'];
 
 export default function AnalyticsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('Charts');
@@ -103,22 +99,6 @@ export default function AnalyticsScreen({ navigation }) {
         </ScrollView>
       )}
 
-      {activeTab === 'Power BI' && (
-        <View style={{ flex: 1 }}>
-          <WebView
-            source={{ uri: POWER_BI_EMBED_URL }}
-            style={{ flex: 1 }}
-            startInLoadingState
-            renderLoading={() => <Loader message="Loading Power BI Dashboard..." />}
-            onError={() => {}}
-          />
-          <View style={styles.powerBINote}>
-            <Ionicons name="information-circle" size={16} color={Colors.info} />
-            <Text style={styles.powerBIText}>Configure Power BI Embed URL in app settings</Text>
-          </View>
-        </View>
-      )}
-
       {activeTab === 'District' && (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.sectionTitle}>District-wise Farm Distribution</Text>
@@ -170,8 +150,6 @@ const styles = StyleSheet.create({
   rateValue: { fontSize: 48, fontWeight: '900', color: Colors.secondary },
   rateBar: { width: '100%', height: 12, backgroundColor: Colors.border, borderRadius: 6, overflow: 'hidden', marginTop: Spacing.sm },
   rateBarFill: { height: '100%', backgroundColor: Colors.secondary, borderRadius: 6 },
-  powerBINote: { flexDirection: 'row', alignItems: 'center', padding: Spacing.sm, backgroundColor: '#fff', gap: Spacing.xs },
-  powerBIText: { fontSize: FontSize.xs, color: Colors.textSecondary },
   sectionTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text, marginBottom: Spacing.md },
   districtCard: { marginBottom: Spacing.xs },
   districtRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.xs },

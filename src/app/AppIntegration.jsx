@@ -26,6 +26,7 @@ import VetAssignedFarmsModule      from "./modules/VetAssignedFarmsModule";
 import VeterinaryAppointmentsModule from "./modules/VeterinaryAppointmentsModule";
 import AIAssistantModule from "./modules/AIAssistantModule";
 import GovernmentFarmMonitoringModule from "./modules/GovernmentFarmMonitoringModule";
+import GovernmentAdvisoriesModule from "./modules/GovernmentAdvisoriesModule";
 
 // ── Palette (matches App.jsx) ─────────────────────────────────────────────
 const P = {
@@ -79,8 +80,6 @@ export const NAV_CONFIG = {
       { label: "Farm Monitoring",     icon: Eye },
       { label: "Disease Surveillance",icon: Activity },
       { label: "Outbreak Map",        icon: MapPin, isNew: true },
-      { label: "Compliance",          icon: CheckCircle },
-      { label: "Analytics",           icon: BarChart2 },
       { label: "Advisories",          icon: Flag },
       { label: "Notifications",       icon: Bell, isNew: true },
       { label: "Profile",             icon: User },
@@ -129,6 +128,8 @@ function renderNewModule(module, farms, user, role) {
       return <VetInspectionModule user={user} />;
     case "Farm Monitoring":
       return <GovernmentFarmMonitoringModule farms={farms} user={user} />;
+    case "Advisories":
+      return <GovernmentAdvisoriesModule farms={farms} user={user} />;
     case "AI Assistant":
     case "AI Recommendation":
       return <AIAssistantModule user={user} onNavigate={module => {}} />;
@@ -139,7 +140,7 @@ function renderNewModule(module, farms, user, role) {
 
 const NEW_MODULES = new Set([
   "Biosecurity Assessment", "Disease Report", "Outbreak Map", "Assigned Farms", "Find Veterinarian", "Appointment Requests",
-  "Notifications", "Vet Inspection", "Farm Monitoring", "AI Assistant", "AI Recommendation"
+  "Notifications", "Vet Inspection", "Farm Monitoring", "Advisories", "AI Assistant", "AI Recommendation"
 ]);
 
 // ── Sidebar ───────────────────────────────────────────────────────────────

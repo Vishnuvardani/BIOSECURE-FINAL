@@ -63,7 +63,7 @@ const SESSION_KEY = "biosecure-session";
 const SESSION_TTL = 24 * 60 * 60 * 1000;
 
 function DataConsumer({ mongoRole, onLogout, language }) {
-  const { user, farms, livestock, vaccinations, diseases, biosecurity,
+  const { user, farms, livestock, vaccinations, diseases, biosecurity, govOutbreaks,
           vetReports, alerts, gisLocations, notifications, analytics,
       allUsers, activities, loading, error, reload } = useData();
 
@@ -74,7 +74,7 @@ function DataConsumer({ mongoRole, onLogout, language }) {
 
   // renderLegacyPage delegates to App's renderPage function
   const renderLegacyPage = (role, page, onNavigate) =>
-    renderPage(role, page, user, { farms, livestock, vaccinations, alerts, biosecurity, activities }, language, onNavigate);
+    renderPage(role, page, user, { farms, livestock, vaccinations, diseases, govOutbreaks, alerts, biosecurity, activities }, language, onNavigate);
 
   return (
     <IntegratedDashboard

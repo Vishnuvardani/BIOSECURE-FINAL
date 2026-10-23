@@ -17,6 +17,7 @@ import {
   getAnalyticsSummary,
   getUsers,
   getFarmActivity,
+  getGovOutbreaks,
 } from "./mongoService";
 
 export function useBioSecureData(role, authenticatedUser = null) {
@@ -27,6 +28,7 @@ export function useBioSecureData(role, authenticatedUser = null) {
   const [diseases,      setDiseases]      = useState([]);
   const [biosecurity,   setBiosecurity]   = useState([]);
   const [activities,    setActivities]    = useState([]);
+  const [govOutbreaks,  setGovOutbreaks]  = useState([]);
   const [vetReports,    setVetReports]    = useState([]);
   const [alerts,        setAlerts]        = useState([]);
   const [gisLocations,  setGisLocations]  = useState([]);
@@ -41,6 +43,7 @@ export function useBioSecureData(role, authenticatedUser = null) {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setGovOutbreaks([]);
     try {
       const loggedUser = authenticatedUser || await loginUser(role);
       if (!loggedUser) throw new Error("No user found for role: " + role);
@@ -125,6 +128,7 @@ export function useBioSecureData(role, authenticatedUser = null) {
         setAlerts(alertsData);
         setGisLocations(gisData);
         setNotifications(notifsData);
+        safe(getGovOutbreaks()).then(setGovOutbreaks);
         setAnalytics(analyticsData);
         setAllUsers(usersData);
         setBiosecurity(bioData);
@@ -145,7 +149,7 @@ export function useBioSecureData(role, authenticatedUser = null) {
   return {
     user, farms, livestock, vaccinations, diseases,
     biosecurity, vetReports, alerts, gisLocations, activities,
-    notifications, analytics, allUsers,
+    notifications, analytics, allUsers, govOutbreaks,
     loading, error, reload: load,
   };
 }

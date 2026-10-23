@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { MapPin, AlertTriangle, RefreshCw, Layers, Info, Brain, ExternalLink, Shield, Activity, Filter, ChevronDown } from "lucide-react";
+import { MapPin, AlertTriangle, RefreshCw, Layers, Info, Brain, Shield, Activity, Filter, ChevronDown } from "lucide-react";
 import { getGISFarms, getGISOutbreaks, getNearbyFarms } from "../../api/mongoService";
-
-const POWERBI_URL = "https://app.powerbi.com/reportEmbed";
 
 const C = {
   red: "#C62828", redL: "#ffebee", redM: "#ef9a9a",
@@ -550,10 +548,6 @@ export default function GISOutbreakMapModule() {
           <h2 style={{ fontFamily: "Poppins, sans-serif", fontSize: 17, fontWeight: 700, color: C.white, margin: 0 }}>GIS Outbreak Map</h2>
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", margin: "2px 0 0" }}>Real-time farm locations · Disease outbreak zones · AI risk prediction</p>
         </div>
-        <a href={POWERBI_URL} target="_blank" rel="noopener noreferrer"
-          style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 13px", borderRadius: 10, background: "#f2c811", color: C.dark, fontWeight: 700, fontSize: 11, textDecoration: "none", flexShrink: 0 }}>
-          <ExternalLink size={12} /> Power BI
-        </a>
         <button onClick={load} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 10, background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", fontSize: 12, color: C.white }}>
           <RefreshCw size={13} /> Refresh
         </button>

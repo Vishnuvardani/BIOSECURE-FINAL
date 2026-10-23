@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useDrawerStatus } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { analyticsAPI, notificationAPI } from '../../services/api';
+import { analyticsAPI, notificationAPI, farmAPI } from '../../services/api';
 import { Card, StatCard, RiskBadge, Loader } from '../../components/UIComponents';
 import { Colors, Spacing, FontSize, BorderRadius, Shadow } from '../../theme';
 
@@ -24,19 +24,36 @@ export default function FarmerDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [weather, setWeather] = useState(null);
+  const [farmCity, setFarmCity] = useState(null);
+
+  const fetchWeather = useCallback(async (city) => {
+    try {
+      const key = '3ce7a4e03e0e642f1467780e357d7da5';
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=metric`);
+      const data = await res.json();
+      if (data.cod === 200) setWeather(data);
+    } catch { }
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
-      const [statsRes, notifRes] = await Promise.all([
+      const [statsRes, notifRes, farmsRes] = await Promise.all([
         analyticsAPI.dashboard(),
-        notificationAPI.getAll()
+        notificationAPI.getAll(),
+        farmAPI.getAll()
       ]);
       setStats(statsRes.data);
       setNotifications(notifRes.data?.slice(0, 5) || []);
+      const farm = farmsRes.data?.[0];
+      const city = farm?.address?.city || null;
+      const district = farm?.address?.district || null;
+      setFarmCity(district || city);
+      if (city) fetchWeather(city);
     } catch { }
     setLoading(false);
     setRefreshing(false);
-  }, []);
+  }, [fetchWeather]);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -66,6 +83,7 @@ export default function FarmerDashboard() {
           <View style={styles.headerCenter}>
             <Text style={styles.greeting}>Good Morning 👋</Text>
             <Text style={styles.userName}>{user?.fullName}</Text>
+            {farmCity && <Text style={styles.headerCity}>📍 {farmCity}</Text>}
           </View>
           <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
             <Ionicons name="notifications" size={26} color="#fff" />
@@ -92,6 +110,21 @@ export default function FarmerDashboard() {
             <StatCard key={i} title={s.title} value={s.value} icon={s.icon} color={s.color} />
           ))}
         </View>
+
+        {/* Weather Card */}
+        {weather && (
+          <Card style={styles.weatherCard}>
+            <View style={styles.weatherRow}>
+              <View>
+                <Text style={styles.weatherCity}>{farmCity || '—'}</Text>
+                <Text style={styles.weatherTemp}>{Math.round(weather.main.temp)}°C</Text>
+                <Text style={styles.weatherDesc}>{weather.weather[0].description}</Text>
+                <Text style={styles.weatherMeta}>💧 {weather.main.humidity}%  💨 {weather.wind.speed} m/s</Text>
+              </View>
+              <Ionicons name="partly-sunny" size={52} color={Colors.warning} />
+            </View>
+          </Card>
+        )}
 
         {/* Quick Actions */}
         <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -143,6 +176,7 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, marginHorizontal: Spacing.md },
   greeting: { color: 'rgba(255,255,255,0.8)', fontSize: FontSize.sm },
   userName: { color: '#fff', fontSize: FontSize.lg, fontWeight: '800' },
+  headerCity: { color: 'rgba(255,255,255,0.75)', fontSize: FontSize.xs, marginTop: 2 },
   biosecurityBanner: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: BorderRadius.md, padding: Spacing.md },
   bannerLabel: { color: 'rgba(255,255,255,0.8)', fontSize: FontSize.xs },
   bannerScore: { color: '#fff', fontSize: FontSize.xxl, fontWeight: '900' },
@@ -162,5 +196,11 @@ const styles = StyleSheet.create({
   notifDot: { width: 10, height: 10, borderRadius: 5, marginTop: 4, marginRight: Spacing.sm },
   notifTitle: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text },
   notifMsg: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 },
-  notifTime: { fontSize: 10, color: Colors.textSecondary, marginTop: 2 }
+  notifTime: { fontSize: 10, color: Colors.textSecondary, marginTop: 2 },
+  weatherCard: { marginBottom: Spacing.sm },
+  weatherRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  weatherCity: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text, marginBottom: 2 },
+  weatherTemp: { fontSize: FontSize.xxl, fontWeight: '900', color: Colors.primary },
+  weatherDesc: { fontSize: FontSize.sm, color: Colors.textSecondary, textTransform: 'capitalize' },
+  weatherMeta: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 4 }
 });

@@ -22,7 +22,8 @@
     "plugins": ["expo-router", "expo-font", ["expo-notifications", { "icon": "./src/assets/notification-icon.png" }]],
     "extra": {
       "apiUrl": "http://localhost:5000/api",
-      "googleMapsApiKey": "<YOUR_GOOGLE_MAPS_API_KEY>"
+      "googleMapsApiKey": "<YOUR_GOOGLE_MAPS_API_KEY>",
+      "openWeatherApiKey": "3ce7a4e03e0e642f1467780e357d7da5"
     }
   }
 }
