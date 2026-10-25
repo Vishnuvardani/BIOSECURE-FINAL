@@ -22,8 +22,9 @@ import DiseaseReportModule         from "./modules/DiseaseReportModule";
 import GISOutbreakMapModule        from "./modules/GISOutbreakMapModule";
 import NotificationSystemModule    from "./modules/NotificationSystemModule";
 import VetInspectionModule         from "./modules/VetInspectionModule";
-import VetAssignedFarmsModule      from "./modules/VetAssignedFarmsModule";
 import VeterinaryAppointmentsModule from "./modules/VeterinaryAppointmentsModule";
+import VetDashboardModule          from "./modules/VetDashboardModule";
+import VetVaccinationModule        from "./modules/VetVaccinationModule";
 import AIAssistantModule from "./modules/AIAssistantModule";
 import GovernmentFarmMonitoringModule from "./modules/GovernmentFarmMonitoringModule";
 import GovernmentAdvisoriesModule from "./modules/GovernmentAdvisoriesModule";
@@ -60,15 +61,12 @@ export const NAV_CONFIG = {
     color: "#1e0838", accent: P.purple, title: "Vet Portal",
     items: [
       { label: "Dashboard",           icon: Home },
-      { label: "Assigned Farms",      icon: Leaf },
-      { label: "Inspection",          icon: ClipboardList },
       { label: "Vet Inspection",      icon: Stethoscope, isNew: true },
       { label: "Appointment Requests", icon: CalendarDays, isNew: true },
       { label: "Health Records",      icon: FileText },
       { label: "Vaccination",         icon: Syringe },
       { label: "Disease Report",      icon: AlertTriangle, isNew: true },
       { label: "Outbreak Map",        icon: MapPin, isNew: true },
-      { label: "AI Recommendation",   icon: Zap },
       { label: "Notifications",       icon: Bell, isNew: true },
       { label: "Profile",             icon: User },
     ],
@@ -110,27 +108,31 @@ const ROLE_LABELS = {
 // ── Render new module pages ───────────────────────────────────────────────
 function renderNewModule(module, farms, user, role) {
   switch (module) {
-    case "Assigned Farms":
-      return <VetAssignedFarmsModule farms={farms} user={user} />;
+
     case "Find Veterinarian":
     case "Appointment Requests":
       return <VeterinaryAppointmentsModule farms={farms} user={user} role={role} />;
     case "Biosecurity Assessment":
       return <BiosecurityAssessmentModule farms={farms} user={user} />;
     case "Disease Report":
-      return <DiseaseReportModule farms={farms} user={user} />;
+      return <DiseaseReportModule farms={farms} user={user} role={role} />;
     case "Outbreak Map":
       return <GISOutbreakMapModule />;
     case "Notifications":
       return <NotificationSystemModule user={user} role={ROLE_LABELS[role]} />;
     case "Vet Inspection":
       return <VetInspectionModule user={user} />;
+    case "Dashboard":
+      if (role === "veterinarian") return <VetDashboardModule user={user} />;
+      return null;
+    case "Vaccination":
+      if (role === "veterinarian") return <VetVaccinationModule user={user} />;
+      return null;
     case "Farm Monitoring":
       return <GovernmentFarmMonitoringModule farms={farms} user={user} />;
     case "Advisories":
       return <GovernmentAdvisoriesModule farms={farms} user={user} />;
     case "AI Assistant":
-    case "AI Recommendation":
       return <AIAssistantModule user={user} onNavigate={module => {}} />;
     default:
       return null;
@@ -138,9 +140,16 @@ function renderNewModule(module, farms, user, role) {
 }
 
 const NEW_MODULES = new Set([
-  "Biosecurity Assessment", "Disease Report", "Outbreak Map", "Assigned Farms", "Find Veterinarian", "Appointment Requests",
-  "Notifications", "Vet Inspection", "Farm Monitoring", "Advisories", "AI Assistant", "AI Recommendation"
+  "Biosecurity Assessment", "Disease Report", "Outbreak Map", "Find Veterinarian", "Appointment Requests",
+  "Notifications", "Vet Inspection", "Farm Monitoring", "Advisories", "AI Assistant"
 ]);
+
+function isModuleHandledByNew(module, role) {
+  if (role === "veterinarian" && (module === "Dashboard" || module === "Vaccination")) {
+    return true;
+  }
+  return NEW_MODULES.has(module);
+}
 
 // ── Sidebar ───────────────────────────────────────────────────────────────
 function Sidebar({ role, activeModule, onNavigate, onLogout, user, sidebarOpen, setSidebarOpen }) {
@@ -233,7 +242,8 @@ export function IntegratedDashboard({ role, user, farms, onLogout, renderLegacyP
   const [activeModule, setActiveModule] = useState("Dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const isNewModule = NEW_MODULES.has(activeModule);
+  const isNewModule = isModuleHandledByNew(activeModule, role);
+  const newModuleElement = isNewModule ? renderNewModule(activeModule, farms || [], user, role) : null;
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: P.ivory, fontFamily: "Inter" }}>
@@ -245,10 +255,7 @@ export function IntegratedDashboard({ role, user, farms, onLogout, renderLegacyP
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <Topbar activeModule={activeModule} onLogout={onLogout} language={language} />
         <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-          {isNewModule
-            ? renderNewModule(activeModule, farms || [], user, role)
-            : renderLegacyPage(role, activeModule, setActiveModule)
-          }
+          {newModuleElement || renderLegacyPage(role, activeModule, setActiveModule)}
         </div>
       </div>
     </div>

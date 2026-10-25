@@ -14,6 +14,10 @@ const userSchema = new mongoose.Schema({
   otpExpiry: { type: Date },
   fcmToken: { type: String },
   district: { type: String },
+  location: {
+    type: { type: String, default: 'Point' },
+    coordinates: { type: [Number], default: [0, 0] }
+  },
   assignedFarms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Farm' }],
   lastLogin: { type: Date }
 }, { timestamps: true });
@@ -27,5 +31,7 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.matchPassword = function (entered) {
   return bcrypt.compare(entered, this.password);
 };
+
+userSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('User', userSchema);

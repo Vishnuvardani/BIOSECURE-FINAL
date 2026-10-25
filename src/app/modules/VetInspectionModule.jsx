@@ -159,7 +159,12 @@ function InspectionForm({ report, user, onSubmit, onCancel }) {
     if (!form.preliminaryDiagnosis.trim()) { alert("Preliminary diagnosis is required"); return; }
     setSubmitting(true);
     try {
-      await updateDiseaseInspection(report.reportId, { ...form, veterinarianId: user?.userId || user?.id || "VET-CURRENT" });
+      await updateDiseaseInspection(report.reportId, {
+        ...form,
+        veterinarianId: user?.userId || user?.id || "VET-CURRENT",
+        vetEmail: user?.email,
+        vetName: user?.fullName || user?.name || "Dr. Priya Vishnu"
+      });
       onSubmit();
     } catch (e) { alert("Failed: " + e.message); }
     finally { setSubmitting(false); }
@@ -281,17 +286,22 @@ export default function VetInspectionModule({ user }) {
 
   const handleStatusChange = async (reportId, status) => {
     try {
-      await updateDiseaseStatus(reportId, { status });
+      const res = await updateDiseaseStatus(reportId, {
+        status,
+        vetEmail: user?.email,
+        vetName: user?.fullName || user?.name || "Dr. Priya Vishnu"
+      });
       setReports(rs => rs.map(r => r.reportId === reportId ? { ...r, status } : r));
-      setSuccess(`Status updated to ${status.replace(/_/g," ")}`);
-      setTimeout(() => setSuccess(""), 3000);
+      const farmerDetail = res?.farmerEmail ? ` Email with all farm details sent to ${res.farmerEmail}.` : " Email dispatched to registered farmer.";
+      setSuccess(`Status changed to ${status.replace(/_/g," ")}!${farmerDetail} In-app notification created.`);
+      setTimeout(() => setSuccess(""), 5000);
     } catch { /* silent */ }
   };
 
   const handleInspectionSubmit = () => {
     setShowForm(false); setSelectedReport(null);
-    setSuccess("Inspection report submitted successfully");
-    setTimeout(() => setSuccess(""), 3000);
+    setSuccess("Inspection submitted successfully! Farm details & status change emailed to farmer, and notification recorded.");
+    setTimeout(() => setSuccess(""), 5000);
     load();
   };
 

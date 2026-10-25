@@ -77,13 +77,15 @@ export const getFarmActivity     = (id) => get(`/farms/${id}/activity`);
 export const addFarmZone          = (farmId, data) => post(`/farms/${encodeURIComponent(farmId)}/zones`, data);
 
 // ── Veterinary appointment booking ────────────────────────────────────────
-export const getAvailableVeterinarians = (farmId) => get(`/veterinarians/available?farmId=${encodeURIComponent(farmId)}`);
+export const getAvailableVeterinarians = (farmId) => get(`/appointments/nearby-veterinarians?farmId=${encodeURIComponent(farmId)}`);
+export const getAllVeterinarians = () => get(`/appointments/all-veterinarians`);
 export const createAppointment = (data) => post("/appointments", data);
 export const getAppointments = (params = {}) => {
   const query = new URLSearchParams(params).toString();
   return get(`/appointments${query ? `?${query}` : ""}`);
 };
 export const updateAppointmentStatus = (appointmentId, data) => put(`/appointments/${appointmentId}/status`, data);
+export const cancelAppointment = (appointmentId) => put(`/appointments/${appointmentId}/cancel`, {});
 
 // ── Livestock ─────────────────────────────────────────────────────────────
 export const getLivestock         = ()       => get("/livestock");
