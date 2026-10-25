@@ -180,7 +180,7 @@ export default function DiseaseReportModule({ farms = [], user }) {
       return setError("Please fill all required fields.");
     setError(""); setSubmitting(true);
     try {
-      const payload = { ...form, farmerId: user?.userId || "unknown", affectedAnimals: Number(form.affectedAnimals) || 0, deaths: Number(form.deaths) || 0, latitude: Number(form.latitude) || 0, longitude: Number(form.longitude) || 0 };
+      const payload = { ...form, farmerId: user?.userId || "unknown", affectedAnimals: Number(form.affectedAnimals) || 0, deaths: Number(form.deaths) || 0, latitude: form.latitude.trim() ? Number(form.latitude) : null, longitude: form.longitude.trim() ? Number(form.longitude) : null };
       const res = await submitDiseaseReport(payload);
       setSubmitted(res);
       setForm({ farmId: "", animalType: "", suspectedDisease: "", otherDisease: "", symptoms: [], affectedAnimals: "", deaths: "", symptomStartDate: "", severity: "", remarks: "", latitude: "", longitude: "" });

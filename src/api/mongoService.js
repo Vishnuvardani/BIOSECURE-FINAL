@@ -12,6 +12,33 @@ async function get(path) {
   return res.json();
 }
 
+function authenticatedHeaders() {
+  const token = typeof window !== "undefined" ? window.localStorage.getItem("biosecure-access-token") : "";
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function getAuthenticated(path) {
+  const res = await fetch(`${BASE}${path}`, { headers: authenticatedHeaders(), cache: "no-store" });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `API error ${res.status}: ${path}`);
+  }
+  return res.json();
+}
+
+async function mutateAuthenticated(path, method, body) {
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", ...authenticatedHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `API error ${res.status}: ${path}`);
+  }
+  return res.json();
+}
+
 async function post(path, body) {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
@@ -128,6 +155,7 @@ export const getDiseaseReports      = ()         => get("/disease/reports");
 export const getDiseaseReportById   = (id)       => get(`/disease/${id}`);
 export const updateDiseaseStatus    = (id, data) => put(`/disease/${id}/status`, data);
 export const updateDiseaseInspection= (id, data) => put(`/disease/${id}/inspection`, data);
+export const confirmDiseaseDiagnosis = (id, data) => put(`/disease/${id}/diagnosis`, data);
 
 // ── GIS Outbreak ──────────────────────────────────────────────────────────
 export const getGISFarms     = ()   => get("/gis/farms");
@@ -140,14 +168,32 @@ export const markNotificationRead= (id) => put(`/notifications/${id}/read`, {});
 export const sendNotification    = (data) => post("/notifications/send", data);
 
 // ── Government ────────────────────────────────────────────────────────────
-export const getGovDashboard = ()     => get("/government/dashboard");
-export const getGovOutbreaks = ()     => get("/government/outbreaks");
+export const getGovDashboard = ()     => getAuthenticated("/government/dashboard");
+export const getGovOutbreaks = ()     => getAuthenticated("/government/outbreaks");
+const governmentAdminQuery = (params = {}) => new URLSearchParams(params).toString();
+export const getGovernmentAdminDashboard = params => getAuthenticated(`/government/admin/dashboard?${governmentAdminQuery(params)}`);
+export const getGovernmentComplaints = params => getAuthenticated(`/government/admin/complaints?${governmentAdminQuery(params)}`);
+export const getGovernmentComplaint = (id, params) => getAuthenticated(`/government/admin/complaints/${encodeURIComponent(id)}?${governmentAdminQuery(params)}`);
+export const updateGovernmentComplaint = (id, body, params) => mutateAuthenticated(`/government/admin/complaints/${encodeURIComponent(id)}?${governmentAdminQuery(params)}`, "PATCH", body);
+export const getGovernmentSchemes = params => getAuthenticated(`/government/admin/schemes?${governmentAdminQuery(params)}`);
+export const createGovernmentScheme = (body, params) => mutateAuthenticated(`/government/admin/schemes?${governmentAdminQuery(params)}`, "POST", body);
+export const updateGovernmentScheme = (id, body, params) => mutateAuthenticated(`/government/admin/schemes/${encodeURIComponent(id)}?${governmentAdminQuery(params)}`, "PATCH", body);
+export const getGovernmentApplications = params => getAuthenticated(`/government/admin/applications?${governmentAdminQuery(params)}`);
+export const reviewGovernmentApplication = (id, body, params) => mutateAuthenticated(`/government/admin/applications/${encodeURIComponent(id)}?${governmentAdminQuery(params)}`, "PATCH", body);
+export const getGovernmentDepartments = params => getAuthenticated(`/government/admin/departments?${governmentAdminQuery(params)}`);
+export const createGovernmentDepartment = (body, params) => mutateAuthenticated(`/government/admin/departments?${governmentAdminQuery(params)}`, "POST", body);
+export const updateGovernmentDepartment = (id, body, params) => mutateAuthenticated(`/government/admin/departments/${encodeURIComponent(id)}?${governmentAdminQuery(params)}`, "PATCH", body);
+export const getGovernmentOfficers = params => getAuthenticated(`/government/admin/officers?${governmentAdminQuery(params)}`);
+export const updateGovernmentOfficer = (id, body) => mutateAuthenticated(`/government/admin/officers/${encodeURIComponent(id)}`, "PATCH", body);
+export const createGovernmentOfficer = body => mutateAuthenticated("/government/admin/officers", "POST", body);
+export const getGovernmentAlerts = params => getAuthenticated(`/government/admin/alerts?${governmentAdminQuery(params)}`);
 export const issueAdvisory   = (data) => post("/government/advisory", data);
 
 async function put(path, body) {
+  const token = typeof window !== "undefined" ? window.localStorage.getItem("biosecure-access-token") : "";
   const res = await fetch(`${BASE}${path}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);

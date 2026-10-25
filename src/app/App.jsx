@@ -160,7 +160,6 @@ const UI_TEXT = {
     diseaseReport: "Disease Report",
     aiRecommendation: "AI Recommendation",
     farmMonitoring: "Farm Monitoring",
-    diseaseSurveillance: "Disease Surveillance",
     gisDashboard: "GIS Dashboard",
     compliance: "Compliance",
     analytics: "Analytics",
@@ -229,7 +228,6 @@ const UI_TEXT = {
       diseaseReport: "Disease Report",
       aiRecommendation: "AI Recommendation",
       farmMonitoring: "Farm Monitoring",
-      diseaseSurveillance: "Disease Surveillance",
       gisDashboard: "GIS Dashboard",
       compliance: "Compliance",
       analytics: "Analytics",
@@ -283,7 +281,6 @@ const UI_TEXT = {
     diseaseReport: "நோய் அறிக்கை",
     aiRecommendation: "AI பரிந்துரை",
     farmMonitoring: "பண்ணை கண்காணிப்பு",
-    diseaseSurveillance: "நோய் கண்காணிப்பு",
     gisDashboard: "GIS டாஷ்போர்டு",
     compliance: "உறுப்பு கடமை",
     analytics: "பகுப்பாய்வு",
@@ -352,7 +349,6 @@ const UI_TEXT = {
       diseaseReport: "நோய் அறிக்கை",
       aiRecommendation: "AI பரிந்துரை",
       farmMonitoring: "பண்ணை கண்காணிப்பு",
-      diseaseSurveillance: "நோய் கண்காணிப்பு",
       gisDashboard: "GIS டாஷ்போர்டு",
       compliance: "உறுப்பு கடமை",
       analytics: "பகுப்பாய்வு",
@@ -981,6 +977,7 @@ function LoginScreen({ onLogin, onRegister, language, onLanguageChange }) {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Login failed"); return; }
+      if (data.accessToken) window.localStorage.setItem("biosecure-access-token", data.accessToken);
       const ROLE_MAP = { "Farmer": "farmer", "Veterinarian": "veterinarian", "Government Officer": "government", "Admin": "admin" };
       onLogin(ROLE_MAP[data.user.role] || "farmer", data.user);
     } catch (e) { setError("Cannot connect to server"); }
@@ -3480,13 +3477,13 @@ const navConfig = {
     color: "#0d1a2d",
     accent: P.info,
     title: "Gov't Portal",
-    items: [{ key: "Dashboard", labelKey: "dashboard", label: "Dashboard", icon: Home }, { key: "Farm Monitoring", labelKey: "farmMonitoring", label: "Farm Monitoring", icon: Eye }, { key: "Disease Surveillance", labelKey: "diseaseSurveillance", label: "Disease Surveillance", icon: Activity }, { key: "GIS Dashboard", labelKey: "gisDashboard", label: "GIS Dashboard", icon: Map }, { key: "Reports", labelKey: "reports", label: "Reports", icon: FileText }, { key: "Advisories", labelKey: "advisories", label: "Advisories", icon: Flag }, { key: "Profile", labelKey: "profile", label: "Profile", icon: User }]
+    items: [{ key: "Dashboard", labelKey: "dashboard", label: "Dashboard", icon: Home }, { key: "Farm Monitoring", labelKey: "farmMonitoring", label: "Farm Monitoring", icon: Eye }, { key: "GIS Dashboard", labelKey: "gisDashboard", label: "GIS Dashboard", icon: Map }, { key: "Reports", labelKey: "reports", label: "Reports", icon: FileText }, { key: "Advisories", labelKey: "advisories", label: "Advisories", icon: Flag }, { key: "Profile", labelKey: "profile", label: "Profile", icon: User }]
   },
   admin: {
     color: "#1a2010",
     accent: P.olive,
     title: "Admin Panel",
-    items: [{ key: "Dashboard", labelKey: "dashboard", label: "Dashboard", icon: Home }, { key: "User Management", labelKey: "userManagement", label: "User Management", icon: Users }, { key: "Farm Management", labelKey: "farmManagement", label: "Farm Management", icon: Leaf }, { key: "Disease Database", labelKey: "diseaseDatabase", label: "Disease Database", icon: Database }, { key: "Notifications", labelKey: "notifications", label: "Notifications", icon: Bell }, { key: "Analytics", labelKey: "analytics", label: "Analytics", icon: BarChart2 }, { key: "System Settings", labelKey: "systemSettings", label: "System Settings", icon: Settings }, { key: "Profile", labelKey: "profile", label: "Profile", icon: User }]
+    items: [{ key: "Dashboard", labelKey: "dashboard", label: "Dashboard", icon: Home }, { key: "Government Administration", labelKey: "governmentAdministration", label: "Government Administration", icon: Building2 }, { key: "User Management", labelKey: "userManagement", label: "User Management", icon: Users }, { key: "Farm Management", labelKey: "farmManagement", label: "Farm Management", icon: Leaf }, { key: "Disease Database", labelKey: "diseaseDatabase", label: "Disease Database", icon: Database }, { key: "Notifications", labelKey: "notifications", label: "Notifications", icon: Bell }, { key: "Analytics", labelKey: "analytics", label: "Analytics", icon: BarChart2 }, { key: "System Settings", labelKey: "systemSettings", label: "System Settings", icon: Settings }, { key: "Profile", labelKey: "profile", label: "Profile", icon: User }]
   }
 };
 function renderPage(role, module, user, data = {}, language = "en", onNavigate) {
@@ -3541,11 +3538,9 @@ function renderPage(role, module, user, data = {}, language = "en", onNavigate) 
   if (role === "government") {
     switch (module) {
       case "Dashboard":
-        return /* @__PURE__ */ jsx(GovernmentDashboardModule, { farms: data.farms || [], reports: data.govOutbreaks || [] });
+        return /* @__PURE__ */ jsx(GovernmentDashboardModule, { farms: data.farms || [], reports: data.govOutbreaks || [], user });
       case "Farm Monitoring":
         return /* @__PURE__ */ jsx(FarmMonitoringPage, { user });
-      case "Disease Surveillance":
-        return /* @__PURE__ */ jsx(DiseaseSurveillancePage, {});
       case "GIS Dashboard":
         return /* @__PURE__ */ jsx(GISModulePage, {});
       case "Reports":
@@ -3560,6 +3555,8 @@ function renderPage(role, module, user, data = {}, language = "en", onNavigate) 
     switch (module) {
       case "Dashboard":
         return /* @__PURE__ */ jsx(AdminDashboardPage, {});
+      case "Government Administration":
+        return /* @__PURE__ */ jsx(GovernmentDashboardModule, { user });
       case "User Management":
         return /* @__PURE__ */ jsx(UserManagementPage, {});
       case "Farm Management":
@@ -3603,12 +3600,12 @@ function DashboardShell({ role, onLogout, user, data = {}, language = "en" }) {
     "Disease Report": "diseaseReport",
     "AI Recommendation": "aiRecommendation",
     "Farm Monitoring": "farmMonitoring",
-    "Disease Surveillance": "diseaseSurveillance",
     "GIS Dashboard": "gisDashboard",
     Compliance: "compliance",
     Analytics: "analytics",
     Advisories: "advisories",
     "User Management": "userManagement",
+    "Government Administration": "governmentAdministration",
     "Disease Database": "diseaseDatabase",
     "System Settings": "systemSettings"
   };

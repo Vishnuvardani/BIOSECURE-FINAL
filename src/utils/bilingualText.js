@@ -182,7 +182,7 @@ const TRANSLATIONS = {
   "or": "அல்லது",
   "and": "மற்றும்",
   "Language": "மொழி",
-  "English": "English",
+  "English": "ஆங்கிலம்",
   "Tamil": "தமிழ்",
   "animals": "விலங்குகள்",
   "Last used": "கடைசியாக பயன்படுத்தியது",
@@ -197,16 +197,398 @@ const TRANSLATIONS = {
   "Registered Farms": "பதிவு செய்யப்பட்ட பண்ணைகள்",
   "Animals Monitored": "கண்காணிக்கப்படும் விலங்குகள்",
   "Compliance Rate": "இணக்கநிலை விகிதம்"
+  ,"Bird Flu": "பறவைக் காய்ச்சல்",
+  "Newcastle Disease": "நியூகாஸ்டில் நோய்",
+  "Foot and Mouth Disease": "கால் மற்றும் வாய் நோய்",
+  "Swine Influenza": "பன்றிக் காய்ச்சல்",
+  "African Swine Fever": "ஆப்பிரிக்க பன்றிக் காய்ச்சல்"
 };
 
+Object.assign(TRANSLATIONS, {
+  "Welcome to BioSecure Farm": "பயோசெக்யூர் பண்ணைக்கு வரவேற்கிறோம்",
+  "Pig & Poultry Farm Management": "பன்றி மற்றும் கோழிப் பண்ணை மேலாண்மை",
+  "A unified platform to monitor pig and poultry health, biosecurity, and government compliance — all in one intelligent dashboard.": "பன்றிகள் மற்றும் கோழிகளின் ஆரோக்கியம், உயிர்பாதுகாப்பு மற்றும் அரசு விதிமுறை இணக்கத்தை ஒரே புத்திசாலித்தனமான முகப்புப் பலகையில் கண்காணிக்க உதவும் ஒருங்கிணைந்த தளம்.",
+  "AI Disease Prediction": "செயற்கை நுண்ணறிவு நோய் கணிப்பு",
+  "Smart Health Intelligence": "சுகாதார நுண்ணறிவு",
+  "Our AI engine predicts ASF, HPAI, PRRS, Newcastle Disease, and 12+ pig and poultry diseases before they spread — powered by real-time sensor and GIS data.": "எங்கள் செயற்கை நுண்ணறிவு அமைப்பு ASF, HPAI, PRRS, நியூகாஸ்டில் நோய் மற்றும் 12-க்கும் மேற்பட்ட பன்றி, கோழி நோய்கள் பரவுவதற்கு முன்பே கணிக்கிறது. இதற்கு நேரடி உணரிகள் மற்றும் புவியியல் தகவல் அமைப்புத் தரவுகள் உதவுகின்றன.",
+  "GIS Disease Monitoring": "புவியியல் தகவல் அமைப்பு மூலம் நோய் கண்காணிப்பு",
+  "Geospatial Intelligence": "புவியியல் நுண்ணறிவு",
+  "Visualise outbreak heatmaps, farm boundaries, and disease spread across districts on an interactive GIS-linked map.": "நோய் பரவல் வெப்ப வரைபடங்கள், பண்ணை எல்லைகள் மற்றும் மாவட்டங்கள் முழுவதும் நோய் பரவுவதை ஊடாடும் புவியியல் தகவல் வரைபடத்தில் காணுங்கள்.",
+  "Biosecurity & Compliance": "உயிர்பாதுகாப்பு மற்றும் விதிமுறை இணக்கம்",
+  "Government-Ready Platform": "அரசுப் பயன்பாட்டிற்குத் தயாரான தளம்",
+  "Automated pig and poultry biosecurity scoring, HPAI/ASF surveillance checklists, vaccination tracking, and compliance reporting aligned with national veterinary standards.": "தேசிய கால்நடை மருத்துவத் தரநிலைகளுக்கு ஏற்ப பன்றி மற்றும் கோழிப் பண்ணைகளுக்கான தானியங்கி உயிர்பாதுகாப்பு மதிப்பீடு, HPAI/ASF கண்காணிப்புப் பட்டியல்கள், தடுப்பூசி கண்காணிப்பு மற்றும் விதிமுறை இணக்க அறிக்கைகள்."
+});
+
+Object.assign(TRANSLATIONS, {
+  "BioSecure": "பயோசெக்யூர்",
+  "Log out": "வெளியேறு",
+  "Farm Risk Assessment": "பண்ணை ஆபத்து மதிப்பீடு",
+  "Could not connect to the API server. Make sure:": "API சேவையகத்துடன் இணைக்க முடியவில்லை. பின்வருவனவற்றைச் சரிபார்க்கவும்:",
+  "1. MongoDB is running on": "1. MongoDB இயங்கிக் கொண்டிருக்க வேண்டும்:",
+  "This assessment is based on available data only. Missing data (e.g. no biosecurity assessment) may affect accuracy. Please keep your farm records up to date.": "இந்த மதிப்பீடு கிடைக்கக்கூடிய தரவை மட்டுமே அடிப்படையாகக் கொண்டது. தரவு இல்லாமை (எ.கா., உயிர்பாதுகாப்பு மதிப்பீடு இல்லாதது) துல்லியத்தைப் பாதிக்கலாம். உங்கள் பண்ணைப் பதிவுகளைப் புதுப்பித்த நிலையில் வைத்திருக்கவும்.",
+  "If you observe sudden animal deaths, serious symptoms, or unusual behaviour, contact a veterinarian or animal health authority immediately. Do not wait for an assessment.": "விலங்குகள் திடீரென இறப்பது, கடுமையான அறிகுறிகள் அல்லது வழக்கத்திற்கு மாறான நடத்தை தென்பட்டால், உடனடியாக கால்நடை மருத்துவர் அல்லது விலங்கு சுகாதார அதிகாரியைத் தொடர்புகொள்ளவும். மதிப்பீட்டுக்காகக் காத்திருக்க வேண்டாம்.",
+  "Optional image, up to 500 KB": "விருப்பப் படம்; அதிகபட்சம் 500 KB",
+  "Assessment ID:": "மதிப்பீட்டு அடையாள எண்:",
+  "Weak Areas": "பலவீனமான பகுதிகள்",
+  "No weak areas": "பலவீனமான பகுதிகள் இல்லை",
+  "Start New Assessment": "புதிய மதிப்பீட்டைத் தொடங்கு",
+  "Rate each parameter to calculate your farm biosecurity score (0–100)": "உங்கள் பண்ணையின் உயிர்பாதுகாப்பு மதிப்பெண்ணைக் கணக்கிட ஒவ்வொரு அளவுருவுக்கும் மதிப்பளிக்கவும் (0–100)",
+  "Report Submitted Successfully": "அறிக்கை வெற்றிகரமாகச் சமர்ப்பிக்கப்பட்டது",
+  "nearby farm(s) identified within risk zone": "ஆபத்து மண்டலத்திற்குள் அருகிலுள்ள பண்ணைகள் கண்டறியப்பட்டன",
+  "report(s) found": "அறிக்கைகள் கண்டறியப்பட்டன",
+  "e.g.": "எ.கா.",
+  "Take Assessment": "மதிப்பீடு செய்",
+  "WGS84 · BioSecure GIS": "WGS84 · பயோசெக்யூர் புவியியல் தகவல் அமைப்பு",
+  "farm(s) in exposure zone": "வெளிப்பாட்டு மண்டலத்தில் உள்ள பண்ணைகள்",
+  "This is a preventive risk assessment based on outbreak proximity, disease type, and farm data. It does not confirm any disease diagnosis.": "இது நோய் பரவலின் அருகாமை, நோய் வகை மற்றும் பண்ணைத் தரவை அடிப்படையாகக் கொண்ட தடுப்பு ஆபத்து மதிப்பீடு. இது எந்த நோயையும் உறுதிப்படுத்தும் நோயறிதல் அல்ல.",
+  "These farms are within the potential exposure zone. Not confirmed infected — precautionary assessment only.": "இந்தப் பண்ணைகள் சாத்தியமான வெளிப்பாட்டு மண்டலத்திற்குள் உள்ளன. தொற்று உறுதிப்படுத்தப்படவில்லை — இது முன்னெச்சரிக்கை மதிப்பீடு மட்டுமே.",
+  "Identifies farms that may require additional attention based on available risk factors. This is not a disease diagnosis.": "கிடைக்கக்கூடிய ஆபத்துக் காரணிகளின் அடிப்படையில் கூடுதல் கவனம் தேவைப்படக்கூடிய பண்ணைகளை இது அடையாளம் காட்டுகிறது. இது நோயறிதல் அல்ல.",
+  "No active disease reports in MongoDB.": "MongoDB-இல் செயலில் உள்ள நோய் அறிக்கைகள் இல்லை.",
+  "Dashboard figures are loaded from MongoDB.": "முகப்புப் பலகைத் தரவுகள் MongoDB-இலிருந்து ஏற்றப்படுகின்றன.",
+  "Confirm Government Assessment": "அரசு மதிப்பீட்டை உறுதிப்படுத்து",
+  "Are you sure you want to submit this government assessment? After submission, the assessment will be added to the farm's official assessment history and become the official verified biosecurity risk level.": "இந்த அரசு மதிப்பீட்டைச் சமர்ப்பிக்க விரும்புகிறீர்களா? சமர்ப்பித்த பிறகு, இது பண்ணையின் அதிகாரப்பூர்வ மதிப்பீட்டு வரலாற்றில் சேர்க்கப்பட்டு, சரிபார்க்கப்பட்ட அதிகாரப்பூர்வ உயிர்பாதுகாப்பு ஆபத்து நிலையாகும்.",
+  "Submit Assessment": "மதிப்பீட்டைச் சமர்ப்பி",
+  "Assessment Details": "மதிப்பீட்டு விவரங்கள்",
+  "Conduct Government Assessment": "அரசு மதிப்பீட்டை நடத்துக",
+  "Total Monitored": "கண்காணிக்கப்படும் மொத்தம்",
+  "Assessment Due": "மதிப்பீடு செய்ய வேண்டியுள்ளது",
+  "Assessment Overdue": "மதிப்பீடு காலக்கெடுவைக் கடந்தது",
+  "Assessment Scheduled": "மதிப்பீடு திட்டமிடப்பட்டது",
+  "Monitored Farm Directory": "கண்காணிக்கப்படும் பண்ணைகள் பட்டியல்",
+  "No farms match your search/filter criteria.": "உங்கள் தேடல் அல்லது வடிகட்டல் அளவுகோல்களுக்குப் பொருந்தும் பண்ணைகள் இல்லை.",
+  "Next Monthly Assessment": "அடுத்த மாதாந்திர மதிப்பீடு",
+  "Latest Farmer Assessment": "விவசாயியின் சமீபத்திய மதிப்பீடு",
+  "Farmer Assessment Verification Evidence": "விவசாயி மதிப்பீட்டைச் சரிபார்ப்பதற்கான ஆதாரம்",
+  "Photos uploaded by farmer during assessment submission for officer verification.": "அதிகாரி சரிபார்ப்புக்காக, மதிப்பீட்டைச் சமர்ப்பிக்கும்போது விவசாயி பதிவேற்றிய புகைப்படங்கள்.",
+  "Farmer Self-Assessment vs Government Inspection Comparison": "விவசாயியின் சுய மதிப்பீடு மற்றும் அரசு ஆய்வு ஒப்பீடு",
+  "Significant assessment variation detected (": "மதிப்பீட்டில் குறிப்பிடத்தக்க வேறுபாடு கண்டறியப்பட்டது (",
+  "points variance). Review recommended.": "புள்ளிகள் வேறுபாடு). மறுஆய்வு பரிந்துரைக்கப்படுகிறது.",
+  "Chronological Assessment History": "காலவரிசைப்படியான மதிப்பீட்டு வரலாறு",
+  "Conducting Assessment:": "மதிப்பீடு நடத்தப்படுகிறது:",
+  "Enter detailed summary findings, observations, and instructions for the farmer...": "விரிவான சுருக்கக் கண்டறிதல்கள், கவனிப்புகள் மற்றும் விவசாயிக்கான வழிமுறைகளை உள்ளிடவும்...",
+  "Connected to MongoDB · Live data": "MongoDB-உடன் இணைக்கப்பட்டது · நேரடித் தரவு",
+  "✓ Notification sent successfully": "✓ அறிவிப்பு வெற்றிகரமாக அனுப்பப்பட்டது",
+  "Send booking request": "முன்பதிவு கோரிக்கையை அனுப்பு",
+  "Describe symptoms observed during inspection...": "ஆய்வின்போது காணப்பட்ட அறிகுறிகளை விவரிக்கவும்...",
+  "Detailed clinical examination findings...": "விரிவான மருத்துவப் பரிசோதனைக் கண்டறிதல்கள்...",
+  "No farms with GPS coordinates found.": "GPS ஆயத்தொலைவுகளுடன் கூடிய பண்ணைகள் எதுவும் கிடைக்கவில்லை.",
+  "Follow-up Inspection": "தொடர் ஆய்வு",
+  "with GPS - click a pin to inspect": "GPS உடன் — ஆய்வு செய்ய ஒரு குறியீட்டைக் கிளிக் செய்யவும்",
+  "nearby farm(s)": "அருகிலுள்ள பண்ணைகள்",
+  "e.g. Green Valley Farm": "எ.கா. கிரீன் வேலி பண்ணை",
+  "e.g. Ramesh Kumar": "எ.கா. ரமேஷ் குமார்"
+});
+
+Object.assign(TRANSLATIONS, {
+  "Protecting Pig & Poultry Farms Through AI & GIS Intelligence": "செயற்கை நுண்ணறிவு மற்றும் புவியியல் தகவல் அமைப்பின் மூலம் பன்றி மற்றும் கோழிப் பண்ணைகளைப் பாதுகாத்தல்",
+  "Protecting Pig & Poultry": "பன்றி மற்றும் கோழிப் பண்ணைகளைப் பாதுகாத்தல்",
+  "Through Intelligence": "நுண்ணறிவு தொழில்நுட்பத்தின் மூலம்",
+  "AI-powered disease prediction · GIS outbreak mapping · Biosecurity compliance": "செயற்கை நுண்ணறிவு மூலம் நோய் கணிப்பு · புவியியல் தகவல் அமைப்பில் நோய் பரவல் வரைபடம் · உயிர்பாதுகாப்பு இணக்கம்",
+  "AI-Powered": "செயற்கை நுண்ணறிவு மூலம் இயக்கப்படும்",
+  "GIS Mapping": "புவியியல் தகவல் அமைப்பு வரைபடமாக்கல்",
+  "Real-time Alerts": "நிகழ்நேர எச்சரிக்கைகள்",
+  "Gov't Compliant": "அரசு விதிமுறைகளுக்கு இணக்கமான",
+  "Gov't Portal": "அரசு இணையதளம்",
+  "Gov't": "அரசு",
+  "Gov't Submitted": "அரசிடம் சமர்ப்பிக்கப்பட்டது",
+  "Gov't Officers": "அரசு அலுவலர்கள்",
+  "Member since": "உறுப்பினரான தேதி:",
+  "Member ID": "உறுப்பினர் அடையாள எண்",
+  "Vaccination Reminders": "தடுப்பூசி நினைவூட்டல்கள்",
+  "Disease report confirmation": "நோய் அறிக்கை உறுதிப்படுத்தல்",
+  "Veterinary inspection updates": "கால்நடை மருத்துவ ஆய்வு புதுப்பிப்புகள்",
+  "Disinfection protocols for vehicles and tools": "வாகனங்கள் மற்றும் கருவிகளுக்கான கிருமிநாசினி நடைமுறைகள்",
+  "Protocols for introducing new animals": "புதிய விலங்குகளை அறிமுகப்படுத்துவதற்கான நடைமுறைகள்"
+});
+
+Object.assign(TRANSLATIONS, {
+  "Government review of registered farm reports. A farmer report is not a confirmed outbreak.": "பதிவுசெய்யப்பட்ட பண்ணை அறிக்கைகளை அரசு ஆய்வு செய்கிறது. விவசாயியின் அறிக்கை உறுதிப்படுத்தப்பட்ட நோய் பரவல் அல்ல.",
+  "Disease trends and distribution": "நோய் போக்குகள் மற்றும் பரவல்",
+  "No dated reports are available for trend analysis.": "போக்கு பகுப்பாய்விற்குத் தேதியிட்ட அறிக்கைகள் எதுவும் இல்லை.",
+  "Report counts, affected animal counts, and death counts are separate measures derived from saved reports.": "அறிக்கை எண்ணிக்கை, பாதிக்கப்பட்ட விலங்குகளின் எண்ணிக்கை மற்றும் இறப்பு எண்ணிக்கை ஆகியவை சேமிக்கப்பட்ட அறிக்கைகளிலிருந்து கணக்கிடப்படும் தனித்தனி அளவீடுகள்.",
+  "Disease-wise reports": "நோய் வாரியான அறிக்கைகள்",
+  "Pig and poultry comparison": "பன்றி மற்றும் கோழி வளர்ப்பு ஒப்பீடு",
+  "Case status distribution": "வழக்கு நிலை பரவல்",
+  "District-wise reports": "மாவட்ட வாரியான அறிக்கைகள்",
+  "Report locations": "அறிக்கை இடங்கள்",
+  "No reports in this filter have valid saved coordinates. Missing locations are not inferred.": "இந்த வடிப்பானில் உள்ள அறிக்கைகளுக்கு செல்லுபடியாகும் சேமிக்கப்பட்ட ஆயத்தொலைவுகள் இல்லை. விடுபட்ட இடங்கள் ஊகிக்கப்படவில்லை.",
+  "All species": "அனைத்து இனங்களும்",
+  "All diseases": "அனைத்து நோய்களும்",
+  "All districts": "அனைத்து மாவட்டங்களும்",
+  "All statuses": "அனைத்து நிலைகளும்",
+  "Search disease, farm, ID…": "நோய், பண்ணை, அடையாள எண்ணைத் தேடுங்கள்…",
+  "Oldest / A–Z": "பழையது / அ–ஔ",
+  "Newest / Z–A": "புதியது / ஔ–அ",
+  "No disease reports match these filters.": "இந்த வடிப்பான்களுக்குப் பொருந்தும் நோய் அறிக்கைகள் இல்லை.",
+  "Choose a verified veterinarian first.": "முதலில் சரிபார்க்கப்பட்ட கால்நடை மருத்துவரைத் தேர்ந்தெடுக்கவும்.",
+  "A rejection reason is required.": "நிராகரிப்பதற்கான காரணம் அவசியம்.",
+  "Report status updated.": "அறிக்கை நிலை புதுப்பிக்கப்பட்டது.",
+  "Could not update report status.": "அறிக்கை நிலையைப் புதுப்பிக்க முடியவில்லை.",
+  "Veterinarian assigned and inspection requested.": "கால்நடை மருத்துவர் நியமிக்கப்பட்டு ஆய்வு கோரப்பட்டுள்ளது.",
+  "Veterinarian assigned.": "கால்நடை மருத்துவர் நியமிக்கப்பட்டார்.",
+  "Could not assign veterinarian.": "கால்நடை மருத்துவரை நியமிக்க முடியவில்லை.",
+  "Could not load nearby farms.": "அருகிலுள்ள பண்ணைகளை ஏற்ற முடியவில்லை.",
+  "Investigation actions": "விசாரணை நடவடிக்கைகள்",
+  "Choose status…": "நிலையைத் தேர்ந்தெடுக்கவும்…",
+  "Only a verified veterinarian can confirm a diagnosis.": "சரிபார்க்கப்பட்ட கால்நடை மருத்துவர் மட்டுமே நோயறிதலை உறுதிப்படுத்த முடியும்.",
+  "Rejection reason (required)": "நிராகரிப்பதற்கான காரணம் (அவசியம்)",
+  "Administrative note": "நிர்வாகக் குறிப்பு",
+  "Save status / note": "நிலை / குறிப்பைச் சேமிக்கவும்",
+  "Select veterinarian…": "கால்நடை மருத்துவரைத் தேர்ந்தெடுக்கவும்…",
+  "Request veterinary inspection": "கால்நடை மருத்துவ ஆய்வைக் கோரவும்",
+  "Nearby farm radius (km)": "அருகிலுள்ள பண்ணை ஆரம் (கி.மீ.)",
+  "Find nearby farms": "அருகிலுள்ள பண்ணைகளைக் கண்டறியவும்",
+  "No registered farms with saved coordinates were found in this radius.": "இந்த ஆரத்திற்குள் ஆயத்தொலைவுகள் சேமிக்கப்பட்ட பதிவுசெய்யப்பட்ட பண்ணைகள் எதுவும் இல்லை.",
+  "The report has no valid coordinates; nearby farms cannot be calculated.": "அறிக்கையில் செல்லுபடியாகும் ஆயத்தொலைவுகள் இல்லை; அருகிலுள்ள பண்ணைகளைக் கணக்கிட முடியாது.",
+  "Relevant livestock records": "தொடர்புடைய கால்நடைப் பதிவுகள்",
+  "No linked livestock records were found for this farm.": "இந்தப் பண்ணையுடன் தொடர்புடைய கால்நடைப் பதிவுகள் எதுவும் இல்லை.",
+  "No data for the selected filters.": "தேர்ந்தெடுத்த வடிப்பான்களுக்கு தரவு இல்லை.",
+  "Location not recorded": "இடம் பதிவு செய்யப்படவில்லை",
+  "Not assigned": "நியமிக்கப்படவில்லை",
+  "Not confirmed": "உறுதிப்படுத்தப்படவில்லை",
+  "Farm not linked": "பண்ணை இணைக்கப்படவில்லை",
+  "Unidentified": "அடையாளம் காணப்படாதது",
+  "Date not recorded": "தேதி பதிவு செய்யப்படவில்லை",
+  "Farm type not recorded": "பண்ணை வகை பதிவு செய்யப்படவில்லை",
+  "Species not recorded": "இனம் பதிவு செய்யப்படவில்லை",
+  "Health status not recorded": "சுகாதார நிலை பதிவு செய்யப்படவில்லை",
+  "No symptoms recorded": "அறிகுறிகள் பதிவு செய்யப்படவில்லை",
+  "No farm ID": "பண்ணை அடையாள எண் இல்லை"
+});
+
+Object.assign(TRANSLATIONS, {
+  "Government Administration Portal": "அரசு நிர்வாக இணையதளம்",
+  "Citizen services · complaints · public schemes · departmental performance": "குடிமக்கள் சேவைகள் · புகார்கள் · அரசு திட்டங்கள் · துறை செயல்திறன்",
+  "Development demo data": "மேம்பாட்டு மாதிரி தரவு",
+  "DEMO DATA — fictional, synthetic records for local development only.": "மாதிரி தரவு — உள்ளூர் மேம்பாட்டிற்கான கற்பனை செயற்கைப் பதிவுகள் மட்டுமே.",
+  "Government administration sections": "அரசு நிர்வாகப் பிரிவுகள்",
+  "Departments & Officers": "துறைகள் மற்றும் அலுவலர்கள்",
+  "Registered citizens": "பதிவுசெய்யப்பட்ட குடிமக்கள்",
+  "Total complaints": "மொத்த புகார்கள்",
+  "Pending complaints": "நிலுவையிலுள்ள புகார்கள்",
+  "In progress": "நடைபெற்றுக் கொண்டிருக்கிறது",
+  "Resolved complaints": "தீர்க்கப்பட்ட புகார்கள்",
+  "Active schemes": "செயலில் உள்ள திட்டங்கள்",
+  "Scheme applications": "திட்ட விண்ணப்பங்கள்",
+  "Awaiting approval": "ஒப்புதலுக்காகக் காத்திருக்கிறது",
+  "Complaints received and resolved": "பெறப்பட்ட மற்றும் தீர்க்கப்பட்ட புகார்கள்",
+  "Complaint status distribution": "புகார் நிலைப் பகிர்வு",
+  "Department performance": "துறை செயல்திறன்",
+  "Complaints by district": "மாவட்ட வாரியான புகார்கள்",
+  "Recent complaints": "சமீபத்திய புகார்கள்",
+  "Alerts and approvals": "எச்சரிக்கைகள் மற்றும் ஒப்புதல்கள்",
+  "Citizen complaints": "குடிமக்கள் புகார்கள்",
+  "All departments": "அனைத்து துறைகள்",
+  "All districts": "அனைத்து மாவட்டங்கள்",
+  "All priorities": "அனைத்து முன்னுரிமைகள்",
+  "All statuses": "அனைத்து நிலைகள்",
+  "Complaint ID, subject, citizen reference": "புகார் எண், பொருள், குடிமக்கள் குறிப்பு",
+  "Sort: submission date": "வரிசை: சமர்ப்பித்த தேதி",
+  "Sort: priority": "வரிசை: முன்னுரிமை",
+  "Sort: status": "வரிசை: நிலை",
+  "Sort: subject": "வரிசை: பொருள்",
+  "Export CSV": "CSV ஏற்றுமதி",
+  "Government schemes": "அரசுத் திட்டங்கள்",
+  "Recent scheme applications": "சமீபத்திய திட்ட விண்ணப்பங்கள்",
+  "Approved / rejected / pending": "ஒப்புதல் / நிராகரிப்பு / நிலுவை",
+  "Citizen reference": "குடிமக்கள் குறிப்பு",
+  "Responsible department": "பொறுப்புத் துறை",
+  "Eligibility criteria": "தகுதி நிபந்தனைகள்",
+  "Required documents (comma separated)": "தேவையான ஆவணங்கள் (காற்புள்ளியால் பிரிக்கவும்)",
+  "Application opens": "விண்ணப்பம் தொடங்கும் நாள்",
+  "Application closes": "விண்ணப்பம் முடியும் நாள்",
+  "Create government scheme": "அரசுத் திட்டத்தை உருவாக்கு",
+  "Edit government scheme": "அரசுத் திட்டத்தைத் திருத்து",
+  "Save scheme": "திட்டத்தைச் சேமி",
+  "Create scheme": "திட்டத்தை உருவாக்கு",
+  "No scheme applications are awaiting review.": "மதிப்பாய்வுக்காக திட்ட விண்ணப்பங்கள் எதுவும் நிலுவையில் இல்லை.",
+  "Overdue:": "காலக்கெடு கடந்தது:",
+  "Due soon:": "காலக்கெடு நெருங்குகிறது:",
+  "Pending approval": "ஒப்புதல் நிலுவையில்",
+  "No overdue complaints or pending approvals.": "காலக்கெடு கடந்த புகார்களோ நிலுவையிலுள்ள ஒப்புதல்களோ இல்லை.",
+  "Authorized officers and workload": "அங்கீகரிக்கப்பட்ட அலுவலர்கள் மற்றும் பணிச்சுமை",
+  "Register officer": "அலுவலரைப் பதிவு செய்",
+  "Register government officer": "அரசு அலுவலரைப் பதிவு செய்",
+  "Officer name": "அலுவலர் பெயர்",
+  "Government email": "அரசு மின்னஞ்சல்",
+  "Temporary password (minimum 12 characters)": "தற்காலிக கடவுச்சொல் (குறைந்தது 12 எழுத்துகள்)",
+  "Select department": "துறையைத் தேர்ந்தெடுக்கவும்",
+  "Create account": "கணக்கை உருவாக்கு",
+  "New department name": "புதிய துறையின் பெயர்",
+  "Department added.": "துறை சேர்க்கப்பட்டது.",
+  "Officer status updated.": "அலுவலர் நிலை புதுப்பிக்கப்பட்டது.",
+  "Complaint updated successfully.": "புகார் வெற்றிகரமாக புதுப்பிக்கப்பட்டது.",
+  "Application approved.": "விண்ணப்பம் ஒப்புதல் பெற்றது.",
+  "Application rejected.": "விண்ணப்பம் நிராகரிக்கப்பட்டது.",
+  "Scheme created.": "திட்டம் உருவாக்கப்பட்டது.",
+  "Scheme updated.": "திட்டம் புதுப்பிக்கப்பட்டது.",
+  "Department status updated.": "துறையின் நிலை புதுப்பிக்கப்பட்டது.",
+  "No complaints match these filters.": "இந்த வடிப்பான்களுடன் பொருந்தும் புகார்கள் இல்லை.",
+  "No complaints received.": "புகார்கள் எதுவும் பெறப்படவில்லை.",
+  "No departments have been configured.": "துறைகள் எதுவும் அமைக்கப்படவில்லை.",
+  "No government officer accounts were found.": "அரசு அலுவலர் கணக்குகள் எதுவும் இல்லை.",
+  "No schemes are available. Add a scheme or seed local demo data.": "திட்டங்கள் எதுவும் இல்லை. ஒரு திட்டத்தைச் சேர்க்கவும் அல்லது உள்ளூர் மாதிரி தரவை ஏற்றவும்."
+});
+
 const ENGLISH_KEYS = Object.keys(TRANSLATIONS).sort((a, b) => b.length - a.length);
-const ENGLISH_PATTERN = new RegExp(`\\b(?:${ENGLISH_KEYS.filter(key => /[A-Za-z]/.test(key)).map(key => key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")).join("|")})\\b`, "gi");
+const TRANSLATION_BY_LOWERCASE = new Map(ENGLISH_KEYS.map(key => [key.toLowerCase(), TRANSLATIONS[key]]));
+const WORD_TRANSLATIONS = {
+  a: "ஒரு", an: "ஒரு", the: "அந்த", of: "இன்", in: "இல்", on: "மீது", at: "இல்", to: "க்கு", for: "க்காக", from: "இருந்து", by: "மூலம்", with: "உடன்", without: "இல்லாமல்", and: "மற்றும்", or: "அல்லது", is: "உள்ளது", are: "உள்ளன", was: "இருந்தது", were: "இருந்தன", be: "இருக்க", been: "இருந்த", being: "இருப்பது", have: "உள்ளது", has: "உள்ளது", had: "இருந்தது", do: "செய்", does: "செய்கிறது", did: "செய்தது", not: "இல்லை", no: "இல்லை", yes: "ஆம்", this: "இது", that: "அது", these: "இவை", those: "அவை", your: "உங்கள்", you: "நீங்கள்", my: "என்", our: "எங்கள்", all: "அனைத்து", each: "ஒவ்வொரு", every: "ஒவ்வொரு", any: "ஏதேனும்", more: "மேலும்", less: "குறைவு", new: "புதிய", old: "பழைய", other: "மற்ற", latest: "சமீபத்திய", recent: "சமீபத்திய", upcoming: "வரவிருக்கும்", current: "தற்போதைய", total: "மொத்தம்", average: "சராசரி", maximum: "அதிகபட்சம்", minimum: "குறைந்தபட்சம்",
+  farm: "பண்ணை", farms: "பண்ணைகள்", farmer: "விவசாயி", farmers: "விவசாயிகள்", livestock: "கால்நடைகள்", animal: "விலங்கு", animals: "விலங்குகள்", poultry: "கோழி வளர்ப்பு", pig: "பன்றி", pigs: "பன்றிகள்", bird: "பறவை", birds: "பறவைகள்", species: "இனம்", breed: "இனவகை", breeds: "இனவகைகள்", owner: "உரிமையாளர்", capacity: "கொள்ளளவு", area: "பரப்பளவு", count: "எண்ணிக்கை", number: "எண்", age: "வயது", gender: "பாலினம்", male: "ஆண்", female: "பெண்", location: "இடம்", address: "முகவரி", district: "மாவட்டம்", state: "மாநிலம்", city: "நகரம்", country: "நாடு", contact: "தொடர்பு", phone: "தொலைபேசி", mobile: "கைபேசி", email: "மின்னஞ்சல்", name: "பெயர்", details: "விவரங்கள்", information: "தகவல்", description: "விளக்கம்", remarks: "குறிப்புகள்", notes: "குறிப்புகள்", image: "படம்", photo: "புகைப்படம்", document: "ஆவணம்", documents: "ஆவணங்கள்", file: "கோப்பு", files: "கோப்புகள்", data: "தரவு", record: "பதிவு", records: "பதிவுகள்", history: "வரலாறு",
+  health: "ஆரோக்கியம்", healthy: "ஆரோக்கியமான", sick: "நோயுற்ற", disease: "நோய்", diseases: "நோய்கள்", symptom: "அறிகுறி", symptoms: "அறிகுறிகள்", diagnosis: "நோயறிதல்", treatment: "சிகிச்சை", vaccine: "தடுப்பூசி", vaccination: "தடுப்பூசி", vaccinated: "தடுப்பூசி செலுத்தப்பட்டது", medicine: "மருந்து", medical: "மருத்துவம்", veterinary: "கால்நடை மருத்துவ", veterinarian: "கால்நடை மருத்துவர்", vet: "கால்நடை மருத்துவர்", inspection: "ஆய்வு", outbreak: "நோய் பரவல்", outbreaks: "நோய் பரவல்கள்", alert: "எச்சரிக்கை", alerts: "எச்சரிக்கைகள்", risk: "ஆபத்து", severity: "தீவிரம்", score: "மதிப்பெண்", biosecurity: "உயிர்பாதுகாப்பு", compliance: "இணக்கம்", mortality: "இறப்பு", death: "இறப்பு", deaths: "இறப்புகள்", affected: "பாதிக்கப்பட்ட", infected: "தொற்றுள்ள", suspected: "சந்தேகிக்கப்படும்", confirmed: "உறுதிப்படுத்தப்பட்டது", reported: "தெரிவிக்கப்பட்டது", report: "அறிக்கை", reports: "அறிக்கைகள்", advisory: "ஆலோசனை", advisories: "ஆலோசனைகள்", restriction: "கட்டுப்பாடு", restrictions: "கட்டுப்பாடுகள்", protocol: "நெறிமுறை", prevention: "தடுப்பு", emergency: "அவசரநிலை",
+  dashboard: "முகப்புப் பலகை", overview: "கண்ணோட்டம்", analytics: "பகுப்பாய்வு", analysis: "பகுப்பாய்வு", monitoring: "கண்காணிப்பு", monitor: "கண்காணி", surveillance: "கண்காணிப்பு", management: "மேலாண்மை", settings: "அமைப்புகள்", profile: "சுயவிவரம்", account: "கணக்கு", role: "பங்கு", user: "பயனர்", users: "பயனர்கள்", admin: "நிர்வாகி", government: "அரசு", officer: "அதிகாரி", system: "அமைப்பு", assistant: "உதவியாளர்", recommendation: "பரிந்துரை", recommendations: "பரிந்துரைகள்", action: "நடவடிக்கை", actions: "நடவடிக்கைகள்", activity: "செயல்பாடு", activities: "செயல்பாடுகள்", notification: "அறிவிப்பு", notifications: "அறிவிப்புகள்", message: "செய்தி", messages: "செய்திகள்", title: "தலைப்பு", category: "வகை", type: "வகை", status: "நிலை", priority: "முன்னுரிமை", source: "மூலம்", target: "இலக்கு", result: "முடிவு", results: "முடிவுகள்", trend: "போக்கு", rate: "விகிதம்", percentage: "சதவீதம்", progress: "முன்னேற்றம்", coverage: "கவரேஜ்", breakdown: "விவரம்", summary: "சுருக்கம்", chart: "விளக்கப்படம்", map: "வரைபடம்", zone: "பகுதி", zones: "பகுதிகள்", region: "பிராந்தியம்", network: "வலையமைப்பு", service: "சேவை", services: "சேவைகள்", appointment: "சந்திப்பு", appointments: "சந்திப்புகள்", request: "கோரிக்கை", requests: "கோரிக்கைகள்", schedule: "அட்டவணை", scheduled: "அட்டவணையிடப்பட்டது", follow: "தொடர்", followup: "தொடர் நடவடிக்கை", visit: "வருகை", task: "பணி", tasks: "பணிகள்", event: "நிகழ்வு", events: "நிகழ்வுகள்",
+  add: "சேர்", create: "உருவாக்கு", edit: "திருத்து", update: "புதுப்பி", save: "சேமி", cancel: "ரத்து செய்", submit: "சமர்ப்பி", delete: "நீக்கு", remove: "அகற்று", view: "பார்", see: "பார்", show: "காட்டு", hide: "மறை", search: "தேடு", filter: "வடிகட்டி", sort: "வரிசைப்படுத்து", select: "தேர்ந்தெடு", choose: "தேர்வு செய்", enter: "உள்ளிடு", type: "உள்ளிடு", upload: "பதிவேற்று", download: "பதிவிறக்கு", export: "ஏற்றுமதி செய்", import: "இறக்குமதி செய்", print: "அச்சிடு", clear: "அழி", reset: "மீட்டமை", close: "மூடு", open: "திற", back: "பின்னால்", next: "அடுத்து", previous: "முந்தைய", continue: "தொடர்", finish: "முடி", start: "தொடங்கு", retry: "மீண்டும் முயற்சி செய்", refresh: "புதுப்பி", reload: "மீளேற்று", loading: "ஏற்றப்படுகிறது", processing: "செயலாக்கப்படுகிறது", complete: "முடிந்தது", completed: "நிறைவு பெற்றது", success: "வெற்றி", failed: "தோல்வியடைந்தது", error: "பிழை", warning: "எச்சரிக்கை", required: "கட்டாயம்", optional: "விருப்பத்தேர்வு", available: "கிடைக்கிறது", unavailable: "கிடைக்கவில்லை", enabled: "இயக்கப்பட்டது", disabled: "முடக்கப்பட்டது", active: "செயலில்", inactive: "செயலற்ற", pending: "நிலுவையில்", approved: "அங்கீகரிக்கப்பட்டது", rejected: "நிராகரிக்கப்பட்டது", accepted: "ஏற்கப்பட்டது", denied: "மறுக்கப்பட்டது", online: "இணையத்தில்", offline: "இணையமின்றி", connected: "இணைக்கப்பட்டது", disconnected: "இணைப்பு துண்டிக்கப்பட்டது", select: "தேர்ந்தெடு", please: "தயவுசெய்து", enter: "உள்ளிடவும்", choose: "தேர்ந்தெடுக்கவும்",
+  high: "அதிகம்", medium: "நடுத்தரம்", low: "குறைவு", good: "நன்று", poor: "மோசம்", moderate: "மிதமான", severe: "கடுமையான", critical: "மிகவும் ஆபத்தான", normal: "இயல்பான", lowrisk: "குறைந்த ஆபத்து", yes: "ஆம்", no: "இல்லை", today: "இன்று", yesterday: "நேற்று", tomorrow: "நாளை", date: "தேதி", time: "நேரம்", day: "நாள்", days: "நாட்கள்", week: "வாரம்", weeks: "வாரங்கள்", month: "மாதம்", months: "மாதங்கள்", year: "ஆண்டு", years: "ஆண்டுகள்", morning: "காலை", afternoon: "பிற்பகல்", evening: "மாலை", night: "இரவு", since: "முதல்", until: "வரை", before: "முன்", after: "பின்", per: "ஒவ்வொரு", total: "மொத்தம்", male: "ஆண்", female: "பெண்"
+};
+Object.assign(WORD_TRANSLATIONS, {
+  type: "வகை", movement: "இயக்கம்", movements: "இயக்கங்கள்", product: "பொருள்", products: "பொருட்கள்", restricted: "கட்டுப்படுத்தப்பட்டது", restriction: "கட்டுப்பாடு", until: "வரை", further: "மேலும்", notice: "அறிவிப்பு", heightened: "தீவிரப்படுத்தப்பட்ட", surveillance: "கண்காணிப்பு", unusual: "வழக்கத்திற்கு மாறான", mortality: "இறப்பு", report: "அறிக்கை", reportable: "தெரிவிக்க வேண்டிய", contact: "தொடர்பு கொள்ளுங்கள்", office: "அலுவலகம்", within: "உள்ளே", between: "இடையே", permit: "அனுமதி", permits: "அனுமதிகள்", team: "குழு", teams: "குழுக்கள்", deployed: "பணியமர்த்தப்பட்ட", mandatory: "கட்டாயமான", drive: "முகாம்", implemented: "செயல்படுத்தப்பட்டது", implementation: "செயல்படுத்தல்", quarantine: "தனிமைப்படுத்தல்", compensation: "இழப்பீடு", scheme: "திட்டம்", certification: "சான்றிதழ்", renewal: "புதுப்பித்தல்", annual: "ஆண்டுதோறும்", required: "தேவையான", must: "வேண்டும்", should: "வேண்டும்", can: "முடியும்", may: "இருக்கலாம்", will: "செய்யும்", available: "கிடைக்கக்கூடிய", affected: "பாதிக்கப்பட்ட", enhanced: "மேம்படுத்தப்பட்ட", measures: "நடவடிக்கைகள்", zone: "பகுதி", declared: "அறிவிக்கப்பட்டது", initiated: "தொடங்கப்பட்டது", scheduling: "அட்டவணையிடுதல்", all: "அனைத்து", this: "இந்த", any: "ஏதேனும்", please: "தயவுசெய்து", a: "ஒரு", an: "ஒரு", the: "அந்த",
+  live: "நேரடி", registered: "பதிவு செய்யப்பட்ட", register: "பதிவு செய்", notified: "அறிவிக்கப்பட்டது", notify: "அறிவி", issued: "வழங்கப்பட்டது", issue: "வழங்கு", expires: "காலாவதியாகிறது", expire: "காலாவதியாகு", effective: "நடைமுறையில் உள்ள", reference: "குறிப்பு", outstanding: "நிலுவையில் உள்ள", overdue: "காலம் கடந்த", due: "நிலுவையில்", unknown: "தெரியாத", set: "அமைக்கப்பட்டது", incomplete: "முழுமையற்ற", completed: "நிறைவு பெற்றது", found: "கண்டறியப்பட்டது", available: "கிடைக்கிறது", welcome: "நல்வரவு", sign: "உள்நுழை", login: "உள்நுழைவு", logout: "வெளியேறு", forgot: "மறந்துவிட்டீர்களா", remember: "நினைவில் கொள்", create: "உருவாக்கு", account: "கணக்கு", google: "Google", password: "கடவுச்சொல்", first: "முதல்", last: "கடைசி", full: "முழு", enter: "உள்ளிடவும்", click: "சொடுக்கவும்", button: "பொத்தான்", page: "பக்கம்", screen: "திரை", platform: "தளம்", welcome: "நல்வரவு", help: "உதவி", support: "ஆதரவு", about: "பற்றி", privacy: "தனியுரிமை", policy: "கொள்கை", terms: "விதிமுறைகள்", confirm: "உறுதிப்படுத்து", continue: "தொடரவும்", skip: "தவிர்", finish: "முடிக்கவும்", done: "முடிந்தது", total: "மொத்தம்", vaccinated: "தடுப்பூசி செலுத்தப்பட்டது", vaccine: "தடுப்பூசி", livestock: "கால்நடைகள்", owner: "உரிமையாளர்", farm: "பண்ணை", poultry: "கோழி வளர்ப்பு", pig: "பன்றி", bird: "பறவை", district: "மாவட்டம்", state: "மாநிலம்", emergency: "அவசரநிலை", daily: "தினசரி", weekly: "வாராந்திர", monthly: "மாதாந்திர", yearly: "ஆண்டுதோறும்", january: "ஜனவரி", february: "பிப்ரவரி", march: "மார்ச்", april: "ஏப்ரல்", may: "மே", june: "ஜூன்", july: "ஜூலை", august: "ஆகஸ்ட்", september: "செப்டம்பர்", october: "அக்டோபர்", november: "நவம்பர்", december: "டிசம்பர்", jan: "ஜனவரி", feb: "பிப்ரவரி", mar: "மார்ச்", apr: "ஏப்ரல்", jun: "ஜூன்", jul: "ஜூலை", aug: "ஆகஸ்ட்", sep: "செப்டம்பர்", oct: "அக்டோபர்", nov: "நவம்பர்", dec: "டிசம்பர்", monday: "திங்கள்", tuesday: "செவ்வாய்", wednesday: "புதன்", thursday: "வியாழன்", friday: "வெள்ளி", saturday: "சனி", sunday: "ஞாயிறு", mon: "திங்கள்", tue: "செவ்வாய்", wed: "புதன்", thu: "வியாழன்", fri: "வெள்ளி", sat: "சனி", sun: "ஞாயிறு", gis: "புவியியல் தகவல் அமைப்பு", ai: "செயற்கை நுண்ணறிவு", api: "நிரல் இடைமுகம்", "don't": "வேண்டாம்", "doesn't": "செய்யாது", "isn't": "இல்லை", "aren't": "இல்லை", "can't": "முடியாது", "won't": "செய்யாது", "you're": "நீங்கள்", "we're": "நாங்கள்", "it's": "அது", "there's": "அங்கே உள்ளது"
+});
+Object.assign(WORD_TRANSLATIONS, {
+  accuracy: "துல்லியம்", acres: "ஏக்கர்", added: "சேர்க்கப்பட்டது", affect: "பாதிப்பு", answered: "பதிலளிக்கப்பட்டது", apply: "செயல்படுத்து", ask: "கேள்", asked: "கேட்கப்பட்டது", assessed: "மதிப்பிடப்பட்டது", assessments: "மதிப்பீடுகள்", assessor: "மதிப்பீட்டாளர்", assign: "ஒதுக்கு", assigned: "ஒதுக்கப்பட்ட", assisted: "உதவிய", attention: "கவனம்", audit: "தணிக்கை", authority: "அதிகாரம்", availability: "கிடைக்கும் நிலை", awaiting: "காத்திருக்கிறது", based: "அடிப்படையிலான", become: "ஆகு", behaviour: "நடத்தை", booking: "முன்பதிவு", calculate: "கணக்கிடு", calculated: "கணக்கிடப்பட்டது", chronological: "காலவரிசைப்படி", classified: "வகைப்படுத்தப்பட்டது", closely: "நெருக்கமாக", comparison: "ஒப்பீடு", compliant: "இணக்கமான", conduct: "நடத்து", conducting: "நடத்துதல்", confirmation: "உறுதிப்படுத்தல்", connect: "இணை", consultation: "ஆலோசனை", context: "சூழல்", coordinates: "ஆயத்தொலைவுகள்", corrective: "திருத்தும்", could: "இயலும்", criteria: "அளவுகோல்கள்", currently: "தற்போது", custom: "தனிப்பயன்", decision: "முடிவு", detailed: "விரிவான", detect: "கண்டறி", detected: "கண்டறியப்பட்டது", diagnoses: "நோயறிதல்கள்", diff: "வேறுபாடு", digit: "இலக்கம்", directions: "திசைகள்", disinfection: "கிருமி நீக்கம்", disposal: "அகற்றுதல்", door: "கதவு", draft: "வரைவு", during: "போது", entry: "உள்ளீடு", established: "நிறுவப்பட்டது", evidence: "ஆதாரம்", examination: "பரிசோதனை", example: "எடுத்துக்காட்டு", expiry: "காலாவதி", exposure: "வெளிப்பாடு", facility: "வசதி", facilities: "வசதிகள்", factors: "காரணிகள்", feed: "தீவனம்", fencing: "வேலி", figures: "எண்ணிக்கைகள்", filtered: "வடிகட்டப்பட்டது", final: "இறுதி", fix: "சரிசெய்", flagged: "குறிக்கப்பட்டது", frequency: "அதிர்வெண்", general: "பொது", glance: "பார்வை", green: "பச்சை", identified: "அடையாளம் காணப்பட்டது", identifies: "அடையாளம் காண்கிறது", immediate: "உடனடி", immediately: "உடனடியாக", important: "முக்கியமான", index: "குறியீடு", infected: "தொற்றுள்ள", inspect: "ஆய்வு செய்", inspections: "ஆய்வுகள்", instructions: "வழிமுறைகள்", issues: "சிக்கல்கள்", item: "உருப்படி", items: "உருப்படிகள்", keep: "வைத்திரு", lab: "ஆய்வகம்", latitude: "அட்சரேகை", level: "நிலை", licensed: "உரிமம் பெற்ற", load: "ஏற்று", loaded: "ஏற்றப்பட்டது", locality: "பகுதி", locations: "இடங்கள்", make: "உருவாக்கு", marking: "குறித்தல்", medically: "மருத்துவ ரீதியாக", mention: "குறிப்பிடு", missing: "காணவில்லை", nearby: "அருகிலுள்ள", none: "எதுவுமில்லை", note: "குறிப்பு", observations: "கவனிப்புகள்", observe: "கவனி", obtained: "பெறப்பட்டது", official: "அதிகாரப்பூர்வ", operations: "செயல்பாடுகள்", out: "வெளியே", overall: "மொத்த", photos: "புகைப்படங்கள்", pin: "குறியீடு", points: "புள்ளிகள்", potential: "சாத்தியமான", precautionary: "முன்னெச்சரிக்கை", prediction: "கணிப்பு", preventive: "தடுப்பு", provided: "வழங்கப்பட்டது", proximity: "அருகாமை", quick: "விரைவு", radius: "ஆரம்", real: "உண்மையான", reason: "காரணம்", receive: "பெறு", recorded: "பதிவுசெய்யப்பட்டது", reg: "பதிவு", registration: "பதிவு", reject: "நிராகரி", require: "தேவைப்படு", requires: "தேவைப்படுகிறது", response: "பதில்", risks: "ஆபத்துகள்", routine: "வழக்கமான", running: "இயங்குகிறது", saving: "சேமிக்கப்படுகிறது", scale: "அளவுகோல்", seed: "விதை", self: "தானாக", sent: "அனுப்பப்பட்டது", serious: "கடுமையான", sheds: "கொட்டகைகள்", showing: "காண்பிக்கிறது", significant: "குறிப்பிடத்தக்க", slots: "நேர இடங்கள்", stock: "இருப்பு", storage: "சேமிப்பு", street: "தெரு", strengths: "பலங்கள்", submission: "சமர்ப்பிப்பு", submitted: "சமர்ப்பிக்கப்பட்டது", sudden: "திடீர்", sure: "உறுதி", take: "எடு", testing: "சோதனை", they: "அவர்கள்", town: "ஊர்", unread: "படிக்காத", updated: "புதுப்பிக்கப்பட்டது", uploaded: "பதிவேற்றப்பட்டது", valley: "பள்ளத்தாக்கு", variance: "மாறுபாடு", variation: "வேறுபாடு", verification: "சரிபார்ப்பு", verified: "சரிபார்க்கப்பட்டது", village: "கிராமம்", visitor: "பார்வையாளர்", visits: "வருகைகள்", wait: "காத்திரு", want: "விரும்பு", waste: "கழிவு", water: "தண்ணீர்", weak: "பலவீனமான", why: "ஏன்", work: "பணி", workflow: "பணிப்பாய்வு", workload: "பணிச்சுமை", zoom: "பெரிதாக்கு", yet: "இன்னும்", zones: "பகுதிகள்", "farm's": "பண்ணையின்"
+});
+Object.assign(WORD_TRANSLATIONS, {
+  accept: "ஏற்றுக்கொள்", availability: "கிடைக்கும் தன்மை", as: "ஆக", asf: "ஆப்பிரிக்க பன்றிக் காய்ச்சல்", based: "அடிப்படையில்", districts: "மாவட்டங்கள்", directory: "அடைவு", gov: "அரசு", govt: "அரசு", id: "அடையாள எண்", if: "என்றால்", linked: "இணைக்கப்பட்ட", longitude: "தீர்க்கரேகை", manage: "நிர்வகி", modules: "தொகுதிகள்", node: "முனை", pincode: "அஞ்சல் குறியீடு", review: "மதிப்பாய்வு", run: "இயக்கு", server: "சேவையகம்", statuses: "நிலைகள்", vs: "எதிராக"
+});
+delete WORD_TRANSLATIONS.valley;
+Object.assign(WORD_TRANSLATIONS, {
+  swine: "பன்றி", fever: "காய்ச்சல்", classical: "பாரம்பரிய", porcine: "பன்றி சார்ந்த", epidemic: "பெருந்தொற்று", diarrhea: "வயிற்றுப்போக்கு", avian: "பறவை சார்ந்த", influenza: "காய்ச்சல்", infectious: "தொற்றுநோய்", bursal: "பர்சா", marek: "மாரெக்", bronchitis: "மூச்சுக்குழாய் அழற்சி", fowl: "கோழி", cholera: "காலரா", loss: "இழப்பு", appetite: "பசியுணர்வு", skin: "தோல்", lesion: "புண்", lesions: "புண்கள்", blotches: "தழும்புகள்", respiratory: "சுவாசம் சார்ந்த", distress: "திணறல்", death: "இறப்பு", deaths: "இறப்புகள்", vomiting: "வாந்தி", lameness: "நடக்க இயலாமை", reproductive: "இனப்பெருக்க", failure: "தோல்வி", neurological: "நரம்பியல்", signs: "அறிகுறிகள்", drop: "குறைவு", egg: "முட்டை", eggs: "முட்டைகள்", production: "உற்பத்தி", swollen: "வீங்கிய", head: "தலை", face: "முகம்", greenish: "பச்சை நிற", nervous: "நரம்பு சார்ந்த", tremor: "நடுக்கம்", tremors: "நடுக்கங்கள்", nasal: "மூக்கிலிருந்து", discharge: "சுரப்பு", meaningful: "பொருளுள்ள", generate: "உருவாக்கு", generation: "உருவாக்கம்", hello: "வணக்கம்", rest: "மீதமுள்ளவை", flock: "கோழிக் கூட்டம்", herd: "கால்நடைக் கூட்டம்", move: "நகர்த்து", moved: "நகர்த்தப்பட்டது", nearest: "அருகிலுள்ள", file: "பதிவு செய்", dispose: "அகற்று", dead: "இறந்த", examined: "பரிசோதிக்கப்பட்ட", diagnose: "நோயறி", promptly: "உடனடியாக", intelligent: "புத்திசாலித்தனமான", unified: "ஒருங்கிணைந்த", sensor: "உணரி", sensors: "உணரிகள்", real: "நிகழ்நேர", visualise: "காட்சிப்படுத்து", visualize: "காட்சிப்படுத்து", heatmaps: "வெப்ப வரைபடங்கள்", boundary: "எல்லை", boundaries: "எல்லைகள்", spread: "பரவல்", interactive: "ஊடாடும்", linked: "இணைக்கப்பட்ட", automated: "தானியங்கி", scoring: "மதிப்பீடு", checklist: "சரிபார்ப்புப் பட்டியல்", checklists: "சரிபார்ப்புப் பட்டியல்கள்", tracking: "கண்காணிப்பு", aligned: "இணைந்த", national: "தேசிய", standard: "தரநிலை", standards: "தரநிலைகள்", visitor: "பார்வையாளர்", logbook: "பதிவேடு", declaration: "அறிவிப்பு", downtime: "செயலற்ற நேரம்", rule: "விதி", rules: "விதிகள்", maintained: "பராமரிக்கப்பட்ட", card: "அட்டை", cards: "அட்டைகள்", access: "அணுகல்", control: "கட்டுப்பாடு", sanitation: "சுகாதாரம்", clean: "சுத்தமான", cleanliness: "தூய்மை", manure: "சாணம்", pest: "பூச்சி", pests: "பூச்சிகள்", maintenance: "பராமரிப்பு", piggery: "பன்றிப் பண்ணை", exemplary: "முன்மாதிரியான", fully: "முழுமையாக", compliant: "இணக்கமான", separate: "தனி", pen: "கூண்டு", wild: "காட்டு", bird: "பறவை", contact: "தொடர்பு", prevent: "தடு", isolation: "தனிமைப்படுத்தல்", isolate: "தனிமைப்படுத்து", recommendation: "பரிந்துரை", recommend: "பரிந்துரை செய்", analysing: "பகுப்பாய்வு செய்", analyzing: "பகுப்பாய்வு செய்", gaps: "இடைவெளிகள்", finding: "கண்டறிதல்", summarising: "சுருக்குதல்", summarizing: "சுருக்குதல்", type: "வகை"
+});
+Object.assign(WORD_TRANSLATIONS, {
+  assessment: "மதிப்பீடு",
+  assessments: "மதிப்பீடுகள்",
+  assessed: "மதிப்பிடப்பட்டது",
+  parameter: "அளவுரு",
+  areas: "பகுதிகள்",
+  weak: "பலவீனமான",
+  additional: "கூடுதல்",
+  successfully: "வெற்றிகரமாக",
+  recommended: "பரிந்துரைக்கப்படுகிறது",
+  monitored: "கண்காணிக்கப்பட்ட",
+  match: "பொருந்து",
+  findings: "கண்டறிதல்கள்",
+  preliminary: "முதற்கட்ட",
+  clinical: "மருத்துவ",
+  describe: "விவரிக்கவும்",
+  started: "தொடங்கியது",
+  observed: "காணப்பட்ட",
+  reporting: "அறிக்கையிடல்",
+  suitable: "பொருத்தமான",
+  book: "முன்பதிவு செய்",
+  send: "அனுப்பு",
+  biosecure: "பயோசெக்யூர்",
+  mongodb: "மோங்கோடிபி",
+  pts: "மதிப்பெண்கள்",
+  km: "கி.மீ.",
+  mod: "நடுத்தர",
+  "e.g": "எ.கா.",
+  reminder: "நினைவூட்டல்",
+  reminders: "நினைவூட்டல்கள்",
+  certificate: "சான்றிதழ்",
+  certificates: "சான்றிதழ்கள்",
+  protocols: "நடைமுறைகள்",
+  campaign: "பிரச்சாரம்",
+  campaigns: "பிரச்சாரங்கள்",
+  member: "உறுப்பினர்",
+  members: "உறுப்பினர்கள்",
+  portal: "இணையதளம்",
+  protecting: "பாதுகாத்தல்",
+  through: "மூலம்",
+  intelligence: "நுண்ணறிவு",
+  powered: "மூலம் இயக்கப்படும்",
+  mapping: "வரைபடமாக்கல்",
+  "gov't": "அரசு",
+  "gov'ts": "அரசின்"
+});
+const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const ENGLISH_PATTERN = new RegExp(
+  `(^|[^A-Za-z])(${ENGLISH_KEYS.filter(key => /[A-Za-z]/.test(key)).map(escapeRegExp).join("|")})(?=$|[^A-Za-z])`,
+  "gi"
+);
 const originalText = new WeakMap();
+Object.assign(WORD_TRANSLATIONS, {
+  awaiting: "காத்திருக்கும்",
+  under: "கீழ்",
+  review: "மதிப்பாய்வு",
+  laboratory: "ஆய்வகம்",
+  resolved: "தீர்க்கப்பட்டது",
+  rejected: "நிராகரிக்கப்பட்டது",
+  cases: "வழக்குகள்",
+  case: "வழக்கு",
+  investigation: "விசாரணை",
+  assign: "நியமி",
+  assigned: "நியமிக்கப்பட்டது",
+  assignment: "நியமனம்",
+  rejection: "நிராகரிப்பு",
+  reason: "காரணம்",
+  search: "தேடு",
+  sort: "வரிசைப்படுத்து",
+  order: "வரிசை",
+  refresh: "புதுப்பி",
+  retry: "மீண்டும் முயற்சி",
+  loading: "ஏற்றப்படுகிறது",
+  matching: "பொருந்தும்",
+  linked: "இணைக்கப்பட்ட",
+  radius: "ஆரம்",
+  potentially: "சாத்தியமாக",
+  exposed: "பாதிப்புக்குள்ளான",
+  requiring: "தேவைப்படும்",
+  assessment: "மதிப்பீடு",
+  coordinates: "ஆயத்தொலைவுகள்",
+  distribution: "பரவல்",
+  onset: "தொடக்கம்",
+  oldest: "பழையது",
+  newest: "புதியது",
+  unidentified: "அடையாளம் காணப்படாதது",
+  location: "இடம்",
+  citizen: "குடிமகன்",
+  citizens: "குடிமக்கள்",
+  complaint: "புகார்",
+  complaints: "புகார்கள்",
+  department: "துறை",
+  departments: "துறைகள்",
+  scheme: "திட்டம்",
+  schemes: "திட்டங்கள்",
+  officer: "அலுவலர்",
+  officers: "அலுவலர்கள்",
+  submitted: "சமர்ப்பிக்கப்பட்டது",
+  pending: "நிலுவையில்",
+  approved: "ஒப்புதல் பெற்றது",
+  active: "செயலில்",
+  inactive: "செயலற்றது",
+  urgent: "அவசரம்",
+  priority: "முன்னுரிமை",
+  eligibility: "தகுதி",
+  application: "விண்ணப்பம்",
+  applications: "விண்ணப்பங்கள்",
+  awaiting: "காத்திருக்கிறது",
+  export: "ஏற்றுமதி",
+  deactivate: "செயலிழக்கச் செய்",
+  activate: "செயல்படுத்து",
+  resolved: "தீர்க்கப்பட்டது",
+  received: "பெறப்பட்டது",
+  overdue: "காலக்கெடு கடந்த",
+  performance: "செயல்திறன்",
+  workload: "பணிச்சுமை",
+  status: "நிலை",
+  date: "தேதி"
+});
+
 const originalAttributes = new WeakMap();
 
 function translateValue(value, language) {
   if (language !== "ta" || !value || !/[A-Za-z]/.test(value)) return value;
-  return value.replace(ENGLISH_PATTERN, match => TRANSLATIONS[ENGLISH_KEYS.find(key => key.toLowerCase() === match.toLowerCase())] || match);
+  const protectedValues = [];
+  const source = value.replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, email => {
+    protectedValues.push(email);
+    return `\uE000${protectedValues.length - 1}\uE001`;
+  });
+  const translatedPhrases = source.replace(ENGLISH_PATTERN, (match, prefix, phrase) => `${prefix}${TRANSLATION_BY_LOWERCASE.get(phrase.toLowerCase()) || phrase}`);
+  const translated = translatedPhrases.replace(/[A-Za-z]+(?:['’][A-Za-z]+)*/g, word => {
+    const key = word.toLowerCase();
+    return WORD_TRANSLATIONS[key] || TRANSLATION_BY_LOWERCASE.get(key) || word;
+  });
+  return translated.replace(/\uE000(\d+)\uE001/g, (_, index) => protectedValues[Number(index)]);
 }
 
 function normalizeSource(value) {
@@ -217,25 +599,33 @@ function normalizeSource(value) {
 
 export function installBilingualText(language) {
   const attributes = ["placeholder", "title", "aria-label", "alt"];
+  const pageTitle = normalizeSource(document.title);
+  document.documentElement.lang = language === "ta" ? "ta" : "en";
+  document.title = language === "ta" ? translateValue(pageTitle, language) : pageTitle;
 
   const translateNode = node => {
     if (node.nodeType === Node.TEXT_NODE) {
       const parent = node.parentElement;
-      if (!parent || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName)) return;
-      if (!originalText.has(node)) originalText.set(node, node.nodeValue);
-      const source = normalizeSource(originalText.get(node));
-      originalText.set(node, source);
+      if (!parent || ["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName) || parent.closest("code, pre")) return;
+      const cached = originalText.get(node);
+      const source = normalizeSource(cached && node.nodeValue === cached.translated ? cached.source : node.nodeValue);
       const translated = language === "ta" ? translateValue(source, language) : source;
+      originalText.set(node, { source, translated });
       if (node.nodeValue !== translated) node.nodeValue = translated;
       return;
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return;
-    if (!originalAttributes.has(node)) originalAttributes.set(node, Object.fromEntries(attributes.map(name => [name, node.getAttribute(name)])));
-    const source = Object.fromEntries(Object.entries(originalAttributes.get(node)).map(([name, value]) => [name, value === null ? null : normalizeSource(value)]));
-    originalAttributes.set(node, source);
+    const cachedAttributes = originalAttributes.get(node) || {};
+    const nextAttributes = {};
     attributes.forEach(name => {
-      if (source[name] !== null) node.setAttribute(name, language === "ta" ? translateValue(source[name], language) : source[name]);
+      const current = node.getAttribute(name);
+      const cached = cachedAttributes[name];
+      const source = current === null ? null : normalizeSource(cached && current === cached.translated ? cached.source : current);
+      const translated = source === null ? null : language === "ta" ? translateValue(source, language) : source;
+      nextAttributes[name] = { source, translated };
+      if (translated !== null && current !== translated) node.setAttribute(name, translated);
     });
+    originalAttributes.set(node, nextAttributes);
     node.childNodes.forEach(translateNode);
   };
 
@@ -243,9 +633,9 @@ export function installBilingualText(language) {
   if (!root) return () => {};
   translateNode(root);
   const observer = new MutationObserver(records => records.forEach(record => {
-    record.addedNodes.forEach(translateNode);
-    if (record.type === "characterData") translateNode(record.target);
+    if (record.type === "childList") record.addedNodes.forEach(translateNode);
+    else if (record.type === "characterData" || record.type === "attributes") translateNode(record.target);
   }));
-  observer.observe(root, { childList: true, subtree: true, characterData: true });
+  observer.observe(root, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: attributes });
   return () => observer.disconnect();
 }

@@ -6,21 +6,146 @@
 const express    = require("express");
 const cors       = require("cors");
 const bcrypt     = require("bcryptjs");
+const crypto     = require("crypto");
 const { MongoClient, ObjectId } = require("mongodb");
+const {
+  isVerifiedVeterinarian,
+  isGovernmentOfficer,
+  hasValidCoordinates,
+  distanceKm,
+  normalizeSurveillanceStatus,
+  buildSurveillanceMatch,
+  getSurveillancePage,
+  getSurveillanceStatusTransition,
+} = require("./disease-surveillance");
+const { parsePage, buildComplaintFilter, complaintSort, validateComplaintUpdate } = require("./government-admin");
 
 const app      = express();
 const PORT     = Number(process.env.PORT) || 5000;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017";
 const DB_NAME   = process.env.DB_NAME || "biosecure_db";
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
 let db;
+const loginFailureWindows = new Map();
+
+function blockedLoginUntil(ipAddress) {
+  const now = Date.now();
+  const entry = loginFailureWindows.get(ipAddress);
+  if (!entry || now - entry.startedAt >= 15 * 60 * 1000) {
+    loginFailureWindows.set(ipAddress, { startedAt: now, failures: 0 });
+    return 0;
+  }
+  return entry.failures >= 10 ? entry.startedAt + 15 * 60 * 1000 : 0;
+}
+
+function recordLoginFailure(ipAddress) {
+  const now = Date.now();
+  const entry = loginFailureWindows.get(ipAddress);
+  if (!entry || now - entry.startedAt >= 15 * 60 * 1000) loginFailureWindows.set(ipAddress, { startedAt: now, failures: 1 });
+  else entry.failures += 1;
+}
+
+function signAccessToken(userId) {
+  const payload = Buffer.from(JSON.stringify({ sub: userId, exp: Date.now() + 24 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function verifyAccessToken(token) {
+  if (!token || typeof token !== "string") return null;
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return null;
+  const expected = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest();
+  let supplied;
+  try { supplied = Buffer.from(signature, "base64url"); } catch { return null; }
+  if (expected.length !== supplied.length || !crypto.timingSafeEqual(expected, supplied)) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return claims.sub && claims.exp > Date.now() ? claims : null;
+  } catch { return null; }
+}
+
+async function requireVerifiedVeterinarian(req, res, next) {
+  try {
+    const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const claims = verifyAccessToken(token);
+    if (!claims) return res.status(401).json({ error: "A valid signed-in veterinarian session is required" });
+    const user = await db.collection("users").findOne({ userId: claims.sub });
+    if (!isVerifiedVeterinarian(user)) return res.status(403).json({ error: "This action is restricted to verified veterinarian accounts" });
+    req.verifiedVeterinarian = user;
+    next();
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}
+
+async function requireGovernmentOfficer(req, res, next) {
+  try {
+    const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const claims = verifyAccessToken(token);
+    if (!claims) return res.status(401).json({ error: "A valid signed-in Government Officer session is required" });
+    const user = await db.collection("users").findOne({ userId: claims.sub });
+    if (!isGovernmentOfficer(user)) return res.status(403).json({ error: "This action is restricted to Government Officer accounts" });
+    req.authenticatedUser = user;
+    next();
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}
+
+async function requireGovernmentAdministrator(req, res, next) {
+  try {
+    const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const claims = verifyAccessToken(token);
+    if (!claims) return res.status(401).json({ error: "A signed-in government administrator session is required" });
+    const user = await db.collection("users").findOne({ userId: claims.sub });
+    if (!user || !["Government Officer", "Department Administrator", "Super Administrator", "Admin"].includes(user.role)) {
+      return res.status(403).json({ error: "This action is restricted to authorized government administrators" });
+    }
+    if (user.isActive === false) return res.status(403).json({ error: "This government account is inactive" });
+    req.authenticatedUser = user;
+    next();
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}
+
+async function requireDiseaseInvestigator(req, res, next) {
+  try {
+    const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const claims = verifyAccessToken(token);
+    if (!claims) return res.status(401).json({ error: "A valid signed-in session is required" });
+    const user = await db.collection("users").findOne({ userId: claims.sub });
+    if (!isGovernmentOfficer(user) && !isVerifiedVeterinarian(user)) {
+      return res.status(403).json({ error: "This action is restricted to Government Officers and verified veterinarians" });
+    }
+    req.authenticatedUser = user;
+    req.isVerifiedVeterinarian = isVerifiedVeterinarian(user);
+    next();
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}
+
+async function requireAdministrator(req, res, next) {
+  try {
+    const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const claims = verifyAccessToken(token);
+    if (!claims) return res.status(401).json({ error: "A valid signed-in administrator session is required" });
+    const user = await db.collection("users").findOne({ userId: claims.sub, role: "Admin" });
+    if (!user) return res.status(403).json({ error: "This action is restricted to administrators" });
+    req.authenticatedUser = user;
+    next();
+  } catch (e) { res.status(500).json({ error: e.message }); }
+}
 
 MongoClient.connect(MONGO_URI)
   .then(client => {
     db = client.db(DB_NAME);
+    return Promise.all([
+      db.collection("disease_reports").createIndex({ reportId: 1 }, { sparse: true }),
+      db.collection("disease_reports").createIndex({ status: 1, reportedDate: -1 }),
+      db.collection("disease_reports").createIndex({ farmId: 1, reportedDate: -1 }),
+      db.collection("disease_reports").createIndex({ district: 1, reportedDate: -1 }),
+    ]);
+  })
+  .then(() => {
     console.log("[OK] Connected to MongoDB:", DB_NAME);
     app.listen(PORT, "0.0.0.0", () => console.log(`[OK] API Server running on http://localhost:${PORT}/api`));
   })
@@ -185,6 +310,7 @@ app.post("/api/auth/register", async (req, res) => {
       userId, name: `${firstName} ${lastName}`, firstName, lastName,
       email, phone: phone || "", passwordHash: hash,
       role: ROLE_MAP[role] || "Farmer",
+      ...(role === "veterinarian" ? { verificationStatus: "PENDING" } : {}),
       extra: extra || {}, location: location || null, provider: "local",
       status: "Active", createdAt: new Date()
     };
@@ -255,17 +381,31 @@ app.put("/api/users/:id", async (req, res) => {
 // ── Auth: Login (email + password) ────────────────────────────────────────
 app.post("/api/auth/login", async (req, res) => {
   try {
+    const ipAddress = req.ip || req.socket.remoteAddress || "unknown";
+    const blockedUntil = blockedLoginUntil(ipAddress);
+    if (blockedUntil) {
+      res.set("Retry-After", String(Math.ceil((blockedUntil - Date.now()) / 1000)));
+      return res.status(429).json({ error: "Too many login attempts. Try again in 15 minutes." });
+    }
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: "email and password required" });
     const user = await db.collection("users").findOne({ email });
-    if (!user) return res.status(401).json({ error: "Invalid email or password" });
+    if (!user) {
+      recordLoginFailure(ipAddress);
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+    if (user.isActive === false) return res.status(403).json({ error: "This account is inactive. Contact a system administrator." });
     // Support both hashed passwords (new users) and legacy users without hash
     if (user.passwordHash) {
       const ok = await bcrypt.compare(password, user.passwordHash);
-      if (!ok) return res.status(401).json({ error: "Invalid email or password" });
+      if (!ok) {
+        recordLoginFailure(ipAddress);
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
     }
+    loginFailureWindows.delete(ipAddress);
     const { passwordHash: _, ...safeUser } = user;
-    res.json({ success: true, user: safeUser });
+    res.json({ success: true, user: safeUser, accessToken: user.passwordHash ? signAccessToken(user.userId) : null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -283,6 +423,29 @@ app.put("/api/users/:id/password", async (req, res) => {
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await db.collection("users").updateOne({ userId: req.params.id }, { $set: { passwordHash, updatedAt: new Date() } });
     res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Explicit administrator verification workflow for veterinarian accounts.
+app.put("/api/admin/veterinarians/:userId/verification", requireAdministrator, async (req, res) => {
+  try {
+    const verificationStatus = String(req.body?.verificationStatus || "").toUpperCase();
+    if (!["PENDING", "VERIFIED", "REJECTED"].includes(verificationStatus))
+      return res.status(400).json({ error: "verificationStatus must be PENDING, VERIFIED, or REJECTED" });
+    const veterinarian = await db.collection("users").findOneAndUpdate(
+      { userId: req.params.userId, role: "Veterinarian" },
+      { $set: {
+        verificationStatus,
+        verifiedBy: req.authenticatedUser.userId,
+        verificationUpdatedAt: new Date(),
+        updatedAt: new Date(),
+      } },
+      { returnDocument: "after" }
+    );
+    const updated = veterinarian?.value || veterinarian;
+    if (!updated) return res.status(404).json({ error: "Veterinarian account not found" });
+    const { passwordHash: _, ...safeUser } = updated;
+    res.json({ success: true, user: safeUser });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -934,14 +1097,16 @@ function calcDiseaseRisk(body) {
 // POST /api/disease/report
 app.post("/api/disease/report", async (req, res) => {
   try {
-    const body = req.body;
+    const body = req.body || {};
     if (!body.farmId || !body.farmerId) return res.status(400).json({ error: "farmId and farmerId required" });
     const reportId  = "DR-" + Date.now();
     const riskLevel = calcDiseaseRisk(body);
     // Get farm coordinates from farms collection
-    const farm = await db.collection("farms").findOne({ farmId: body.farmId });
-    const latitude  = body.latitude  || farm?.latitude  || 0;
-    const longitude = body.longitude || farm?.longitude || 0;
+    const farm = await db.collection("farms").findOne({ $or: [{ farmId: body.farmId }, { id: body.farmId }] });
+    const suppliedCoordinates = hasValidCoordinates(body.latitude, body.longitude);
+    const farmCoordinates = hasValidCoordinates(farm?.latitude, farm?.longitude);
+    const latitude = suppliedCoordinates ? Number(body.latitude) : farmCoordinates ? Number(farm.latitude) : null;
+    const longitude = suppliedCoordinates ? Number(body.longitude) : farmCoordinates ? Number(farm.longitude) : null;
     const doc = {
       reportId, farmId: body.farmId, farmerId: body.farmerId,
       animalType: body.animalType, suspectedDisease: body.suspectedDisease,
@@ -950,18 +1115,23 @@ app.post("/api/disease/report", async (req, res) => {
       deaths: Number(body.deaths) || 0, symptomStartDate: body.symptomStartDate,
       severity: body.severity, remarks: body.remarks || "",
       imageUrl: body.imageUrl || null, latitude, longitude,
+      district: body.district || farm?.district || null,
+      farmName: farm?.farmName || farm?.name || null,
       status: "REPORTED", riskLevel,
       reportedDate: new Date().toISOString(),
       veterinarianId: null, inspectionStatus: "PENDING",
-      diagnosis: null, createdAt: new Date(), updatedAt: new Date()
+      diagnosis: null,
+      statusHistory: [{ status: "REPORTED", changedAt: new Date(), actorRole: "Farmer", actorId: body.farmerId }],
+      createdAt: new Date(), updatedAt: new Date()
     };
     await db.collection("disease_reports").insertOne(doc);
     // Find nearby farms within configurable radius
     const config = await db.collection("system_config").findOne({ key: "risk_radius_km" });
     const radiusKm = config?.value || 5;
-    const allFarms = await db.collection("farms").find({ latitude: { $exists: true } }).toArray();
+    const allFarms = latitude === null || longitude === null ? [] :
+      await db.collection("farms").find({ latitude: { $exists: true }, longitude: { $exists: true } }).toArray();
     const nearbyFarms = allFarms.filter(f =>
-      f.farmId !== body.farmId && f.latitude && f.longitude &&
+      f.farmId !== body.farmId && hasValidCoordinates(f.latitude, f.longitude) &&
       haversineKm(latitude, longitude, f.latitude, f.longitude) <= radiusKm
     ).map(f => ({ farmId: f.farmId, farmName: f.farmName, distance: haversineKm(latitude, longitude, f.latitude, f.longitude).toFixed(2) }));
     // Store nearby farms in the report
@@ -1005,24 +1175,77 @@ app.get("/api/disease/:reportId", async (req, res) => {
 });
 
 // PUT /api/disease/:reportId/status
-app.put("/api/disease/:reportId/status", async (req, res) => {
+app.put("/api/disease/:reportId/status", requireDiseaseInvestigator, async (req, res) => {
   try {
-    const { status } = req.body;
-    const validStatuses = ["REPORTED","UNDER_REVIEW","VETERINARY_INSPECTION","CONFIRMED","RULED_OUT","RESOLVED"];
-    if (!validStatuses.includes(status)) return res.status(400).json({ error: "Invalid status" });
-    await db.collection("disease_reports").updateOne(
-      { reportId: req.params.reportId },
-      { $set: { status, updatedAt: new Date() } }
-    );
-    res.json({ success: true, reportId: req.params.reportId, status });
+    const { status, reason, note } = req.body || {};
+    const report = await db.collection("disease_reports").findOne({ reportId: req.params.reportId });
+    if (!report) return res.status(404).json({ error: "Report not found" });
+    const actor = req.authenticatedUser;
+    const transition = getSurveillanceStatusTransition(report.status, status, actor.role, reason);
+    if (transition.error) return res.status(transition.error.startsWith("Only a verified") ? 403 : 400).json({ error: transition.error });
+    const changedAt = new Date();
+    const result = await db.collection("disease_reports").updateOne({ reportId: req.params.reportId, status: report.status }, {
+      $set: { status: transition.next, ...(transition.next === "REJECTED" ? { rejectionReason: String(reason).trim() } : {}), updatedAt: changedAt },
+      $push: { statusHistory: {
+        previousStatus: transition.current,
+        status: transition.next,
+        changedAt,
+        actorRole: actor.role,
+        actorId: actor.userId,
+        actorName: actor.name || actor.fullName || actor.userId,
+        note: String(note || reason || "").trim(),
+      } },
+    });
+    if (!result.modifiedCount) return res.status(409).json({ error: "The report changed while this update was being saved. Reload and try again." });
+    res.json({ success: true, reportId: req.params.reportId, previousStatus: transition.current, status: transition.next });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// A definitive diagnosis is accepted only from a database-verified veterinary
+// account. Merely having an active veterinarian account is not sufficient.
+app.put("/api/disease/:reportId/diagnosis", requireVerifiedVeterinarian, async (req, res) => {
+  try {
+    const { diagnosis, diagnosisNotes, labResult } = req.body || {};
+    if (!String(diagnosis || "").trim()) return res.status(400).json({ error: "diagnosis is required" });
+    const veterinarian = req.verifiedVeterinarian;
+    const report = await db.collection("disease_reports").findOne({ reportId: req.params.reportId });
+    if (!report) return res.status(404).json({ error: "Report not found" });
+    const changedAt = new Date();
+    const veterinarianName = veterinarian.name || veterinarian.fullName || veterinarian.email || veterinarian.userId;
+    const confirmedDiagnosis = String(diagnosis).trim();
+    const result = await db.collection("disease_reports").updateOne({ reportId: req.params.reportId, status: report.status }, {
+      $set: {
+        diagnosis: confirmedDiagnosis,
+        diagnosisNotes: String(diagnosisNotes || "").trim(),
+        labResult: String(labResult || "").trim(),
+        veterinarianId: veterinarian.userId,
+        veterinarianName,
+        diagnosisConfirmedAt: changedAt,
+        inspectionStatus: "CONFIRMED",
+        status: "CONFIRMED",
+        updatedAt: changedAt,
+      },
+      $push: { statusHistory: {
+        previousStatus: normalizeSurveillanceStatus(report.status),
+        status: "CONFIRMED", changedAt, actorRole: "Veterinarian",
+        actorId: veterinarian.userId, actorName: veterinarianName, note: confirmedDiagnosis,
+      } },
+    });
+    if (!result.modifiedCount) return res.status(409).json({ error: "The report changed while the diagnosis was being saved. Reload and try again." });
+    res.json({ success: true, reportId: req.params.reportId, diagnosis: confirmedDiagnosis, veterinarianId: veterinarian.userId, status: "CONFIRMED", diagnosisConfirmedAt: changedAt });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PUT /api/disease/:reportId/inspection
-app.put("/api/disease/:reportId/inspection", async (req, res) => {
+app.put("/api/disease/:reportId/inspection", requireVerifiedVeterinarian, async (req, res) => {
   try {
+    const veterinarian = req.verifiedVeterinarian;
+    const existingReport = await db.collection("disease_reports").findOne({ reportId: req.params.reportId });
+    if (!existingReport) return res.status(404).json({ error: "Report not found" });
+    const changedAt = new Date();
     const update = {
-      veterinarianId: req.body.veterinarianId,
+      veterinarianId: veterinarian.userId,
+      veterinarianName: veterinarian.name || veterinarian.fullName || veterinarian.email || veterinarian.userId,
       inspectionDate: req.body.inspectionDate,
       symptomsObserved: req.body.symptomsObserved,
       clinicalFindings: req.body.clinicalFindings,
@@ -1032,9 +1255,12 @@ app.put("/api/disease/:reportId/inspection", async (req, res) => {
       followUpDate: req.body.followUpDate,
       inspectionStatus: req.body.inspectionStatus || "INSPECTED",
       status: "VETERINARY_INSPECTION",
-      updatedAt: new Date()
+      updatedAt: changedAt
     };
-    await db.collection("disease_reports").updateOne({ reportId: req.params.reportId }, { $set: update });
+    await db.collection("disease_reports").updateOne({ reportId: req.params.reportId }, {
+      $set: update,
+      $push: { statusHistory: { previousStatus: normalizeSurveillanceStatus(existingReport.status), status: "UNDER_REVIEW", changedAt, actorRole: "Veterinarian", actorId: veterinarian.userId, actorName: update.veterinarianName } },
+    });
     res.json({ success: true, reportId: req.params.reportId });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1145,7 +1371,7 @@ app.post("/api/notifications/send", async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // GET /api/government/dashboard
-app.get("/api/government/dashboard", async (req, res) => {
+app.get("/api/government/dashboard", requireGovernmentOfficer, async (req, res) => {
   try {
     const [farms, reports, assessments] = await Promise.all([
       db.collection("farms").find().toArray(),
@@ -1194,7 +1420,7 @@ app.get("/api/government/dashboard", async (req, res) => {
 });
 
 // GET /api/government/outbreaks
-app.get("/api/government/outbreaks", async (req, res) => {
+app.get("/api/government/outbreaks", requireGovernmentOfficer, async (req, res) => {
   try {
     const filter = {};
     if (req.query.riskLevel) filter.riskLevel = req.query.riskLevel;
@@ -1202,6 +1428,808 @@ app.get("/api/government/outbreaks", async (req, res) => {
     if (req.query.animalType) filter.animalType = req.query.animalType;
     const docs = await db.collection("disease_reports").find(filter).sort({ createdAt: -1 }).toArray();
     res.json(docs);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+function diseaseSurveillanceStages(query = {}) {
+  const { match, error } = buildSurveillanceMatch(query);
+  if (error) return { error };
+  return { stages: [
+    {
+      $lookup: {
+        from: "farms",
+        let: { reportFarmId: { $toString: { $ifNull: ["$farmId", ""] } } },
+        pipeline: [
+          { $match: { $expr: { $or: [
+            { $eq: [{ $toString: "$farmId" }, "$$reportFarmId"] },
+            { $eq: [{ $toString: "$id" }, "$$reportFarmId"] },
+            { $eq: [{ $toString: "$_id" }, "$$reportFarmId"] },
+          ] } } },
+          { $limit: 1 },
+          { $project: { farmId: 1, id: 1, farmName: 1, name: 1, farmType: 1, district: 1, state: 1, village: 1, latitude: 1, longitude: 1, animalCount: 1, farmArea: 1 } },
+        ],
+        as: "matchedFarm",
+      },
+    },
+    { $addFields: {
+      farm: { $arrayElemAt: ["$matchedFarm", 0] },
+      reportedAt: { $convert: { input: { $ifNull: ["$reportedDate", { $ifNull: ["$createdAt", "$symptomStartDate"] }] }, to: "date", onError: null, onNull: null } },
+      canonicalStatus: { $switch: {
+        branches: [
+          { case: { $eq: [{ $toUpper: { $ifNull: ["$status", ""] } }, "VETERINARY_INSPECTION"] }, then: "UNDER_REVIEW" },
+          { case: { $eq: [{ $toUpper: { $ifNull: ["$status", ""] } }, "RULED_OUT"] }, then: "REJECTED" },
+        ],
+        default: { $replaceAll: { input: { $toUpper: { $ifNull: ["$status", "REPORTED"] } }, find: " ", replacement: "_" } },
+      } },
+    } },
+    { $addFields: {
+      farmName: { $ifNull: ["$farmName", { $ifNull: ["$farm.farmName", "$farm.name"] }] },
+      district: { $ifNull: ["$district", "$farm.district"] },
+      latitude: { $ifNull: ["$latitude", "$farm.latitude"] },
+      longitude: { $ifNull: ["$longitude", "$farm.longitude"] },
+    } },
+    ...(Object.keys(match).length ? [{ $match: match }] : []),
+  ] };
+}
+
+function validReportId(req, res) {
+  const reportId = String(req.params.reportId || "").trim();
+  if (!reportId || reportId.length > 100) {
+    res.status(400).json({ error: "A valid report ID is required" });
+    return null;
+  }
+  return reportId;
+}
+
+app.get("/api/government/disease-surveillance/summary", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const query = diseaseSurveillanceStages(req.query);
+    if (query.error) return res.status(400).json({ error: query.error });
+    const result = await db.collection("disease_reports").aggregate([
+      ...query.stages,
+      { $facet: {
+        totals: [{ $count: "count" }],
+        statuses: [{ $group: { _id: "$canonicalStatus", count: { $sum: 1 } } }],
+        monitoringFarms: [
+          { $match: { canonicalStatus: "MONITORING", farmId: { $nin: [null, ""] } } },
+          { $group: { _id: "$farmId" } },
+          { $count: "count" },
+        ],
+      } },
+    ]).toArray();
+    const data = result[0] || {};
+    const statusCounts = Object.fromEntries((data.statuses || []).map(row => [row._id, row.count]));
+    res.json({
+      totalReports: data.totals?.[0]?.count || 0,
+      newReports: statusCounts.REPORTED || 0,
+      suspectedCases: (statusCounts.SUSPECTED || 0) + (statusCounts.AWAITING_LABORATORY_CONFIRMATION || 0),
+      confirmedOutbreaks: statusCounts.CONFIRMED || 0,
+      closedCases: (statusCounts.RESOLVED || 0) + (statusCounts.REJECTED || 0),
+      farmsUnderMonitoring: data.monitoringFarms?.[0]?.count || 0,
+      statusCounts,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/disease-surveillance/reports", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const paging = getSurveillancePage(req.query);
+    if (paging.error) return res.status(400).json({ error: paging.error });
+    const query = diseaseSurveillanceStages(req.query);
+    if (query.error) return res.status(400).json({ error: query.error });
+    const sortKey = paging.sortBy === "reportedDate" ? "reportedAt" : paging.sortBy === "status" ? "canonicalStatus" : paging.sortBy;
+    const [result] = await db.collection("disease_reports").aggregate([
+      ...query.stages,
+      { $facet: {
+        items: [
+          { $sort: { [sortKey]: paging.sortOrder, _id: 1 } },
+          { $skip: (paging.page - 1) * paging.pageSize },
+          { $limit: paging.pageSize },
+          { $project: {
+            _id: 0,
+            reportId: 1,
+            farmId: 1,
+            animalType: 1,
+            suspectedDisease: 1,
+            diseaseName: 1,
+            symptoms: 1,
+            affectedAnimals: 1,
+            deaths: 1,
+            reportedDate: 1,
+            symptomStartDate: 1,
+            severity: 1,
+            remarks: 1,
+            imageUrl: 1,
+            latitude: 1,
+            longitude: 1,
+            district: 1,
+            farmName: 1,
+            status: 1,
+            canonicalStatus: 1,
+            riskLevel: 1,
+            assignedVeterinarianId: 1,
+            assignedVeterinarianName: 1,
+            veterinarianId: 1,
+            veterinarianName: 1,
+            diagnosis: 1,
+            inspectionStatus: 1,
+            reportedAt: 1,
+            updatedAt: 1,
+            farm: {
+              farmId: "$farm.farmId",
+              name: { $ifNull: ["$farm.farmName", "$farm.name"] },
+              farmType: "$farm.farmType",
+              district: "$farm.district",
+              state: "$farm.state",
+              village: "$farm.village",
+              latitude: "$farm.latitude",
+              longitude: "$farm.longitude",
+            },
+          } },
+        ],
+        total: [{ $count: "count" }],
+      } },
+    ]).toArray();
+    const total = result?.total?.[0]?.count || 0;
+    res.json({ items: result?.items || [], total, page: paging.page, pageSize: paging.pageSize, pages: Math.max(1, Math.ceil(total / paging.pageSize)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/disease-surveillance/reports/:reportId", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const reportId = validReportId(req, res);
+    if (!reportId) return;
+    const report = await db.collection("disease_reports").findOne({ reportId });
+    if (!report) return res.status(404).json({ error: "Disease report not found" });
+    const farmId = String(report.farmId || "");
+    const farm = await db.collection("farms").findOne({ $or: [{ farmId }, { id: farmId }, ...(ObjectId.isValid(farmId) ? [{ _id: new ObjectId(farmId) }] : [])] });
+    const [livestock, veterinarianReports] = await Promise.all([
+      db.collection("livestock").find({ farmId }).limit(200).toArray(),
+      db.collection("veterinarian_reports").find({ $or: [{ reportId }, { farmId }] }).sort({ createdAt: -1 }).limit(50).toArray(),
+    ]);
+    const safeFarm = farm ? {
+      farmId: farm.farmId || farm.id || String(farm._id),
+      farmName: farm.farmName || farm.name || null,
+      farmType: farm.farmType || null,
+      district: farm.district || report.district || null,
+      state: farm.state || null,
+      village: farm.village || null,
+      latitude: farm.latitude ?? report.latitude ?? null,
+      longitude: farm.longitude ?? report.longitude ?? null,
+      animalCount: farm.animalCount ?? null,
+      farmArea: farm.farmArea ?? null,
+    } : null;
+    res.json({ report, farm: safeFarm, livestock, veterinarianReports });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/disease-surveillance/reports/:reportId/history", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const reportId = validReportId(req, res);
+    if (!reportId) return;
+    const report = await db.collection("disease_reports").findOne({ reportId }, { projection: { statusHistory: 1, administrativeActions: 1 } });
+    if (!report) return res.status(404).json({ error: "Disease report not found" });
+    res.json({ statusHistory: report.statusHistory || [], administrativeActions: report.administrativeActions || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch("/api/government/disease-surveillance/reports/:reportId/status", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const reportId = validReportId(req, res);
+    if (!reportId) return;
+    const body = req.body || {};
+    if (typeof body.status !== "string" || (body.note !== undefined && typeof body.note !== "string") || (body.reason !== undefined && typeof body.reason !== "string")) {
+      return res.status(400).json({ error: "status, note, and reason must be strings" });
+    }
+    const report = await db.collection("disease_reports").findOne({ reportId });
+    if (!report) return res.status(404).json({ error: "Disease report not found" });
+    const transition = getSurveillanceStatusTransition(report.status, body.status, req.authenticatedUser.role, body.reason);
+    if (transition.error) return res.status(400).json({ error: transition.error });
+    const actor = req.authenticatedUser;
+    const changedAt = new Date();
+    const note = String(body.note || body.reason || "").trim().slice(0, 2000);
+    const result = await db.collection("disease_reports").updateOne({ reportId, status: report.status }, {
+      $set: { status: transition.next, ...(transition.next === "REJECTED" ? { rejectionReason: String(body.reason).trim().slice(0, 1000) } : {}), updatedAt: changedAt },
+      $push: {
+        statusHistory: { previousStatus: transition.current, status: transition.next, changedAt, actorRole: actor.role, actorId: actor.userId, actorName: actor.name || actor.fullName || actor.userId, note },
+        ...(note ? { administrativeActions: { action: note, createdAt: changedAt, actorRole: actor.role, actorId: actor.userId, actorName: actor.name || actor.userId } } : {}),
+      },
+    });
+    if (!result.modifiedCount) return res.status(409).json({ error: "The report changed while this update was being saved. Reload and try again." });
+    res.json({ success: true, reportId, previousStatus: transition.current, status: transition.next });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/disease-surveillance/veterinarians", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const veterinarians = await db.collection("users").find({
+      role: "Veterinarian",
+      $or: [
+        { isVerified: true },
+        { verified: true },
+        { verificationStatus: { $regex: /^verified$/i } },
+        { "professionalVerification.status": { $regex: /^verified$/i } },
+      ],
+    }, { projection: { userId: 1, name: 1, fullName: 1, verificationStatus: 1, district: 1, "extra.District": 1 } }).limit(200).toArray();
+    res.json(veterinarians.map(vet => ({ userId: vet.userId, name: vet.name || vet.fullName || vet.userId, district: vet.district || vet.extra?.District || null })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/disease-surveillance/filters", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const [result] = await db.collection("disease_reports").aggregate([
+      ...diseaseSurveillanceStages().stages,
+      { $facet: {
+        diseases: [{ $group: { _id: { $ifNull: ["$suspectedDisease", { $ifNull: ["$diseaseName", null] }] } } }, { $match: { _id: { $nin: [null, ""] } } }, { $sort: { _id: 1 } }, { $project: { _id: 0, value: "$_id" } }],
+        districts: [{ $group: { _id: "$district" } }, { $match: { _id: { $nin: [null, ""] } } }, { $sort: { _id: 1 } }, { $project: { _id: 0, value: "$_id" } }],
+        species: [{ $group: { _id: "$animalType" } }, { $match: { _id: { $nin: [null, ""] } } }, { $sort: { _id: 1 } }, { $project: { _id: 0, value: "$_id" } }],
+      } },
+    ]).toArray();
+    res.json({
+      diseases: (result?.diseases || []).map(item => item.value),
+      districts: (result?.districts || []).map(item => item.value),
+      species: (result?.species || []).map(item => item.value),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch("/api/government/disease-surveillance/reports/:reportId/assign-veterinarian", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const reportId = validReportId(req, res);
+    if (!reportId) return;
+    const veterinarianId = String(req.body?.veterinarianId || "").trim();
+    if (req.body?.requestInspection !== undefined && typeof req.body.requestInspection !== "boolean") {
+      return res.status(400).json({ error: "requestInspection must be a boolean" });
+    }
+    const requestInspection = req.body?.requestInspection !== false;
+    if (!veterinarianId || veterinarianId.length > 100) return res.status(400).json({ error: "A valid veterinarianId is required" });
+    const veterinarian = await db.collection("users").findOne({
+      userId: veterinarianId,
+      role: "Veterinarian",
+      $or: [
+        { isVerified: true },
+        { verified: true },
+        { verificationStatus: { $regex: /^verified$/i } },
+        { "professionalVerification.status": { $regex: /^verified$/i } },
+      ],
+    }, { projection: { userId: 1, name: 1, fullName: 1 } });
+    if (!veterinarian) return res.status(400).json({ error: "Select a verified veterinarian" });
+    const report = await db.collection("disease_reports").findOne({ reportId });
+    if (!report) return res.status(404).json({ error: "Disease report not found" });
+    const actor = req.authenticatedUser;
+    const changedAt = new Date();
+    const veterinarianName = veterinarian.name || veterinarian.fullName || veterinarian.userId;
+    const status = normalizeSurveillanceStatus(report.status);
+    const nextStatus = status === "REPORTED" ? "UNDER_REVIEW" : status;
+    const result = await db.collection("disease_reports").updateOne({ reportId, status: report.status }, {
+      $set: {
+        assignedVeterinarianId: veterinarian.userId,
+        assignedVeterinarianName: veterinarianName,
+        veterinarianId: veterinarian.userId,
+        veterinarianName,
+        inspectionRequested: requestInspection,
+        ...(requestInspection ? { inspectionRequestedAt: changedAt } : {}),
+        status: nextStatus,
+        updatedAt: changedAt,
+      },
+      $push: { statusHistory: {
+        previousStatus: status,
+        status: nextStatus,
+        changedAt,
+        actorRole: actor.role,
+        actorId: actor.userId,
+        actorName: actor.name || actor.userId,
+        note: requestInspection ? `Assigned to ${veterinarianName}; inspection requested` : `Assigned to ${veterinarianName}`,
+      } },
+    });
+    if (!result.modifiedCount) return res.status(409).json({ error: "The report changed while assignment was being saved. Reload and try again." });
+    if (requestInspection) {
+      await db.collection("notifications").insertOne({
+        notificationId: `N-${Date.now()}-${reportId}-inspection`,
+        targetRole: "Veterinarian",
+        targetUserId: veterinarian.userId,
+        type: "DISEASE_INSPECTION_REQUEST",
+        title: "Disease report inspection requested",
+        message: `Government Officer ${actor.name || actor.userId} assigned disease report ${reportId} for veterinary inspection.`,
+        reportId,
+        isRead: false,
+        createdAt: changedAt,
+      });
+    }
+    res.json({ success: true, reportId, veterinarianId: veterinarian.userId, veterinarianName, inspectionRequested: requestInspection, status: nextStatus });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/disease-surveillance/trends", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const period = req.query.period || "daily";
+    if (!["daily", "weekly", "monthly"].includes(period)) return res.status(400).json({ error: "period must be daily, weekly, or monthly" });
+    const query = diseaseSurveillanceStages(req.query);
+    if (query.error) return res.status(400).json({ error: query.error });
+    const format = period === "daily" ? "%Y-%m-%d" : period === "weekly" ? "%G-W%V" : "%Y-%m";
+    const [result] = await db.collection("disease_reports").aggregate([
+      ...query.stages,
+      { $facet: {
+        trend: [
+          { $match: { reportedAt: { $ne: null } } },
+          { $group: { _id: { $dateToString: { format, date: "$reportedAt" } }, reports: { $sum: 1 }, affectedAnimals: { $sum: { $convert: { input: "$affectedAnimals", to: "int", onError: 0, onNull: 0 } } }, deaths: { $sum: { $convert: { input: "$deaths", to: "int", onError: 0, onNull: 0 } } } } },
+          { $sort: { _id: 1 } },
+          { $project: { _id: 0, period: "$_id", reports: 1, affectedAnimals: 1, deaths: 1 } },
+        ],
+        diseases: [{ $group: { _id: { $ifNull: ["$suspectedDisease", { $ifNull: ["$diseaseName", "Not recorded"] }] }, reports: { $sum: 1 } } }, { $sort: { reports: -1 } }, { $project: { _id: 0, disease: "$_id", reports: 1 } }],
+        species: [{ $group: { _id: { $ifNull: ["$animalType", "Not recorded"] }, reports: { $sum: 1 }, affectedAnimals: { $sum: { $convert: { input: "$affectedAnimals", to: "int", onError: 0, onNull: 0 } } }, deaths: { $sum: { $convert: { input: "$deaths", to: "int", onError: 0, onNull: 0 } } } } }, { $sort: { reports: -1 } }, { $project: { _id: 0, species: "$_id", reports: 1, affectedAnimals: 1, deaths: 1 } }],
+        districts: [{ $group: { _id: { $ifNull: ["$district", "Not recorded"] }, reports: { $sum: 1 } } }, { $sort: { reports: -1 } }, { $project: { _id: 0, district: "$_id", reports: 1 } }],
+        statuses: [{ $group: { _id: "$canonicalStatus", reports: { $sum: 1 } } }, { $sort: { reports: -1 } }, { $project: { _id: 0, status: "$_id", reports: 1 } }],
+      } },
+    ]).toArray();
+    res.json(result || { trend: [], diseases: [], species: [], districts: [], statuses: [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/disease-surveillance/map", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const query = diseaseSurveillanceStages(req.query);
+    if (query.error) return res.status(400).json({ error: query.error });
+    const reports = await db.collection("disease_reports").aggregate([
+      ...query.stages,
+      { $match: { latitude: { $exists: true, $ne: null }, longitude: { $exists: true, $ne: null } } },
+      { $limit: 1000 },
+      { $project: { _id: 0, reportId: 1, farmId: 1, farmName: 1, district: 1, animalType: 1, suspectedDisease: 1, status: "$canonicalStatus", reportedDate: 1, affectedAnimals: 1, latitude: 1, longitude: 1 } },
+    ]).toArray();
+    res.json(reports.filter(report => hasValidCoordinates(report.latitude, report.longitude)));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/disease-surveillance/reports/:reportId/nearby", requireGovernmentOfficer, async (req, res) => {
+  try {
+    const reportId = validReportId(req, res);
+    if (!reportId) return;
+    const radiusKm = Number(req.query.radiusKm || 5);
+    if (!Number.isFinite(radiusKm) || radiusKm <= 0 || radiusKm > 100) return res.status(400).json({ error: "radiusKm must be greater than 0 and no more than 100" });
+    const report = await db.collection("disease_reports").findOne({ reportId });
+    if (!report) return res.status(404).json({ error: "Disease report not found" });
+    const farmId = String(report.farmId || "");
+    const farm = hasValidCoordinates(report.latitude, report.longitude) ? null :
+      await db.collection("farms").findOne({ $or: [{ farmId }, { id: farmId }, ...(ObjectId.isValid(farmId) ? [{ _id: new ObjectId(farmId) }] : [])] }, { projection: { latitude: 1, longitude: 1 } });
+    const latitude = hasValidCoordinates(report.latitude, report.longitude) ? report.latitude : farm?.latitude;
+    const longitude = hasValidCoordinates(report.latitude, report.longitude) ? report.longitude : farm?.longitude;
+    if (!hasValidCoordinates(latitude, longitude)) return res.status(200).json({ centerHasCoordinates: false, radiusKm, nearbyFarms: [] });
+    const farms = await db.collection("farms").find({ latitude: { $exists: true, $ne: null }, longitude: { $exists: true, $ne: null } }, {
+      projection: { farmId: 1, id: 1, farmName: 1, name: 1, farmType: 1, district: 1, latitude: 1, longitude: 1 },
+    }).limit(5000).toArray();
+    const nearbyFarms = farms.flatMap(farm => {
+      if (String(farm.farmId || farm.id || farm._id) === String(report.farmId) || !hasValidCoordinates(farm.latitude, farm.longitude)) return [];
+      const distance = distanceKm(latitude, longitude, farm.latitude, farm.longitude);
+      return distance <= radiusKm ? [{
+        farmId: farm.farmId || farm.id || String(farm._id),
+        farmName: farm.farmName || farm.name || null,
+        farmType: farm.farmType || null,
+        district: farm.district || null,
+        distanceKm: Number(distance.toFixed(2)),
+        assessment: "Potentially exposed; requires assessment",
+      }] : [];
+    }).sort((first, second) => first.distanceKm - second.distanceKm);
+    res.json({ centerHasCoordinates: true, radiusKm, nearbyFarms });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+function governmentDemoFilter(req) {
+  const wantsDemo = req.query.demo === "true";
+  if (wantsDemo && process.env.NODE_ENV === "production") return { error: "Demo data is disabled in production" };
+  return wantsDemo ? { isSynthetic: true } : { isSynthetic: { $ne: true } };
+}
+
+function validText(value, field, maxLength = 5000) {
+  if (typeof value !== "string" || !value.trim() || value.length > maxLength) return `${field} is required and must be shorter than ${maxLength} characters`;
+  return null;
+}
+
+function governmentDateFilter(query, field) {
+  const result = {};
+  if (query.from) {
+    const from = new Date(query.from);
+    if (Number.isNaN(from.getTime())) return { error: "from must be a valid date" };
+    result.$gte = from;
+  }
+  if (query.to) {
+    const to = new Date(query.to);
+    if (Number.isNaN(to.getTime())) return { error: "to must be a valid date" };
+    to.setHours(23, 59, 59, 999);
+    result.$lte = to;
+  }
+  if (result.$gte && result.$lte && result.$gte > result.$lte) return { error: "from must be on or before to" };
+  return Object.keys(result).length ? { [field]: result } : {};
+}
+
+app.get("/api/government/admin/dashboard", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const period = req.query.period || "monthly";
+    if (!["monthly", "yearly"].includes(period)) return res.status(400).json({ error: "period must be monthly or yearly" });
+    const complaintDates = governmentDateFilter(req.query, "submittedAt");
+    const citizenDates = governmentDateFilter(req.query, "createdAt");
+    const applicationDates = governmentDateFilter(req.query, "submittedAt");
+    if (complaintDates.error || citizenDates.error || applicationDates.error) return res.status(400).json({ error: complaintDates.error || citizenDates.error || applicationDates.error });
+    const match = { ...mode, ...complaintDates };
+    const citizenMatch = { ...mode, ...citizenDates };
+    const applicationMatch = { ...mode, ...applicationDates };
+    const [citizens, complaints, pending, applications, trend, byStatus, departments, districts] = await Promise.all([
+      db.collection("government_citizens").countDocuments(citizenMatch),
+      db.collection("government_complaints").countDocuments(match),
+      db.collection("government_complaints").countDocuments({ ...match, status: "SUBMITTED" }),
+      db.collection("government_complaints").countDocuments({ ...match, status: { $in: ["ASSIGNED", "IN_PROGRESS", "UNDER_REVIEW"] } }),
+      db.collection("government_complaints").aggregate([
+        { $match: match },
+        { $group: { _id: { $dateToString: { format: period === "yearly" ? "%Y" : "%Y-%m", date: "$submittedAt" } }, received: { $sum: 1 }, resolved: { $sum: { $cond: [{ $eq: ["$status", "RESOLVED"] }, 1, 0] } } } },
+        { $sort: { _id: 1 } }, { $limit: 12 },
+        { $project: { _id: 0, month: "$_id", received: 1, resolved: 1 } },
+      ]).toArray(),
+      db.collection("government_complaints").aggregate([
+        { $match: match }, { $group: { _id: "$status", count: { $sum: 1 } } }, { $sort: { count: -1 } },
+        { $project: { _id: 0, status: "$_id", count: 1 } },
+      ]).toArray(),
+      db.collection("government_complaints").aggregate([
+        { $match: match }, { $group: { _id: { departmentId: "$departmentId", name: "$departmentName" }, received: { $sum: 1 }, resolved: { $sum: { $cond: [{ $eq: ["$status", "RESOLVED"] }, 1, 0] } } } },
+        { $sort: { received: -1 } }, { $limit: 10 },
+        { $project: { _id: 0, department: "$_id.name", departmentId: "$_id.departmentId", received: 1, resolved: 1 } },
+      ]).toArray(),
+      db.collection("government_complaints").aggregate([
+        { $match: match }, { $group: { _id: "$district", complaints: { $sum: 1 } } },
+        { $sort: { complaints: -1 } }, { $limit: 15 },
+        { $project: { _id: 0, district: { $ifNull: ["$_id", "District not recorded"] }, complaints: 1 } },
+      ]).toArray(),
+    ]);
+    const [resolved, schemesActive, totalApplications, pendingApplications, overdue] = await Promise.all([
+      db.collection("government_complaints").countDocuments({ ...match, status: "RESOLVED" }),
+      db.collection("government_schemes").countDocuments({ ...mode, active: true }),
+      db.collection("government_scheme_applications").countDocuments(applicationMatch),
+      db.collection("government_scheme_applications").countDocuments({ ...applicationMatch, status: "PENDING" }),
+      db.collection("government_complaints").countDocuments({ ...match, dueAt: { $lt: new Date() }, status: { $nin: ["RESOLVED", "REJECTED"] } }),
+    ]);
+    res.json({ citizens, complaints, pending, inProgress: applications, resolved, schemesActive, totalApplications, pendingApplications, overdue, trend, byStatus, departments, districts, demo: req.query.demo === "true" });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/admin/complaints", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const paging = parsePage(req.query);
+    if (paging.error) return res.status(400).json({ error: paging.error });
+    const sorting = complaintSort(req.query);
+    if (sorting.error) return res.status(400).json({ error: sorting.error });
+    const filters = buildComplaintFilter(req.query);
+    if (filters.error) return res.status(400).json({ error: filters.error });
+    const filter = { ...mode, ...filters.filter };
+    const [items, total] = await Promise.all([
+      db.collection("government_complaints").find(filter, { projection: { citizenName: 0, citizenPhone: 0, citizenEmail: 0 } })
+        .sort(sorting.sort).skip((paging.page - 1) * paging.pageSize).limit(paging.pageSize).toArray(),
+      db.collection("government_complaints").countDocuments(filter),
+    ]);
+    res.json({ items, total, page: paging.page, pageSize: paging.pageSize, pages: Math.max(1, Math.ceil(total / paging.pageSize)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/admin/complaints/:complaintId", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const complaint = await db.collection("government_complaints").findOne({ ...mode, complaintId: req.params.complaintId }, {
+      projection: { citizenPhone: 0, citizenEmail: 0 },
+    });
+    if (!complaint) return res.status(404).json({ error: "Complaint not found" });
+    res.json(complaint);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch("/api/government/admin/complaints/:complaintId", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const validation = validateComplaintUpdate(req.body);
+    if (validation.error) return res.status(400).json({ error: validation.error });
+    const complaint = await db.collection("government_complaints").findOne({ ...mode, complaintId: req.params.complaintId });
+    if (!complaint) return res.status(404).json({ error: "Complaint not found" });
+    if (req.body.assignedOfficerId) {
+      const officerCollection = req.query.demo === "true" ? "government_demo_officers" : "users";
+      const syntheticScope = req.query.demo === "true" ? { isSynthetic: true } : { isSynthetic: { $ne: true } };
+      const officer = await db.collection(officerCollection).findOne({
+        ...syntheticScope,
+        userId: req.body.assignedOfficerId,
+        role: { $in: ["Government Officer", "Department Administrator", "Super Administrator", "Admin"] },
+        isActive: { $ne: false },
+      }, { projection: { userId: 1, name: 1, fullName: 1 } });
+      if (!officer) return res.status(400).json({ error: "Select an active authorized officer" });
+      validation.update.assignedOfficerName = officer.name || officer.fullName || officer.userId;
+    }
+    const changedAt = new Date();
+    const actor = req.authenticatedUser;
+    const updates = { ...validation.update, updatedAt: changedAt };
+    if (req.body.status === "RESOLVED") updates.resolvedAt = changedAt;
+    if (req.body.status === "REJECTED") updates.rejectionReason = String(req.body.rejectionReason).trim();
+    const audit = {
+      changedAt, actorId: actor.userId, actorName: actor.name || actor.fullName || actor.userId,
+      ...(req.body.status ? { action: "STATUS_CHANGED", previousStatus: complaint.status, status: req.body.status } : {}),
+      ...(req.body.assignedOfficerId ? { action: "OFFICER_ASSIGNED", assignedOfficerId: req.body.assignedOfficerId } : {}),
+      ...(req.body.internalNote ? { action: "NOTE_ADDED", note: req.body.internalNote.trim() } : {}),
+    };
+    const result = await db.collection("government_complaints").updateOne(
+      { ...mode, complaintId: req.params.complaintId, status: complaint.status },
+      { $set: updates, $push: { ...(req.body.internalNote ? { internalNotes: { note: req.body.internalNote.trim(), actorId: actor.userId, actorName: actor.name || actor.userId, createdAt: changedAt } } : {}), auditHistory: audit } },
+    );
+    if (!result.modifiedCount) return res.status(409).json({ error: "Complaint was changed concurrently; reload and retry" });
+    res.json({ success: true, complaintId: req.params.complaintId, audit });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/admin/schemes", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const schemes = await db.collection("government_schemes").aggregate([
+      { $match: mode },
+      { $lookup: { from: "government_scheme_applications", let: { scheme: "$schemeId" }, pipeline: [
+        { $match: { $expr: { $eq: ["$schemeId", "$$scheme"] }, ...(req.query.demo === "true" ? { isSynthetic: true } : { isSynthetic: { $ne: true } }) } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ], as: "applicationStats" } },
+      { $addFields: {
+        applicationCount: { $sum: "$applicationStats.count" },
+        approvedCount: { $let: { vars: { found: { $arrayElemAt: [{ $filter: { input: "$applicationStats", as: "item", cond: { $eq: ["$$item._id", "APPROVED"] } } }, 0] } }, in: { $ifNull: ["$$found.count", 0] } } },
+        rejectedCount: { $let: { vars: { found: { $arrayElemAt: [{ $filter: { input: "$applicationStats", as: "item", cond: { $eq: ["$$item._id", "REJECTED"] } } }, 0] } }, in: { $ifNull: ["$$found.count", 0] } } },
+        pendingCount: { $let: { vars: { found: { $arrayElemAt: [{ $filter: { input: "$applicationStats", as: "item", cond: { $eq: ["$$item._id", "PENDING"] } } }, 0] } }, in: { $ifNull: ["$$found.count", 0] } } },
+      } },
+      { $project: { applicationStats: 0 } },
+      { $sort: { updatedAt: -1 } }, { $limit: 200 },
+    ]).toArray();
+    res.json(schemes);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/government/admin/schemes", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const body = req.body || {};
+    for (const field of ["name", "description", "departmentName"]) {
+      const error = validText(body[field], field);
+      if (error) return res.status(400).json({ error });
+    }
+    const scheme = {
+      schemeId: `SCH-${crypto.randomUUID()}`, name: body.name.trim(), description: body.description.trim(),
+      departmentName: body.departmentName.trim(), eligibility: String(body.eligibility || "").trim(),
+      requiredDocuments: Array.isArray(body.requiredDocuments) ? body.requiredDocuments.filter(item => typeof item === "string").slice(0, 30) : [],
+      openingAt: body.openingAt ? new Date(body.openingAt) : null, closingAt: body.closingAt ? new Date(body.closingAt) : null,
+      active: true, ...mode, createdAt: new Date(), updatedAt: new Date(),
+    };
+    if ((scheme.openingAt && Number.isNaN(scheme.openingAt.getTime())) || (scheme.closingAt && Number.isNaN(scheme.closingAt.getTime()))) return res.status(400).json({ error: "Scheme dates must be valid dates" });
+    await db.collection("government_schemes").insertOne(scheme);
+    res.status(201).json(scheme);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch("/api/government/admin/schemes/:schemeId", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const changes = {};
+    for (const field of ["name", "description", "departmentName", "eligibility"]) {
+      if (req.body?.[field] !== undefined) {
+        const error = validText(req.body[field], field);
+        if (error) return res.status(400).json({ error });
+        changes[field] = req.body[field].trim();
+      }
+    }
+    if (req.body?.requiredDocuments !== undefined) {
+      if (!Array.isArray(req.body.requiredDocuments) || req.body.requiredDocuments.some(item => typeof item !== "string") || req.body.requiredDocuments.length > 30) {
+        return res.status(400).json({ error: "requiredDocuments must be a list of up to 30 text entries" });
+      }
+      changes.requiredDocuments = req.body.requiredDocuments.map(item => item.trim()).filter(Boolean);
+    }
+    for (const field of ["openingAt", "closingAt"]) {
+      if (req.body?.[field] !== undefined) {
+        const date = req.body[field] ? new Date(req.body[field]) : null;
+        if (date && Number.isNaN(date.getTime())) return res.status(400).json({ error: `${field} must be a valid date` });
+        changes[field] = date;
+      }
+    }
+    if (req.body?.active !== undefined) {
+      if (typeof req.body.active !== "boolean") return res.status(400).json({ error: "active must be a boolean" });
+      changes.active = req.body.active;
+    }
+    changes.updatedAt = new Date();
+    const result = await db.collection("government_schemes").updateOne({ ...mode, schemeId: req.params.schemeId }, { $set: changes });
+    if (!result.matchedCount) return res.status(404).json({ error: "Scheme not found" });
+    res.json({ success: true, schemeId: req.params.schemeId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/admin/applications", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const page = parsePage(req.query);
+    if (page.error) return res.status(400).json({ error: page.error });
+    const dates = governmentDateFilter(req.query, "submittedAt");
+    if (dates.error) return res.status(400).json({ error: dates.error });
+    if (req.query.status && !["PENDING", "APPROVED", "REJECTED"].includes(String(req.query.status))) return res.status(400).json({ error: "status is not supported" });
+    const filter = { ...mode, ...dates, ...(req.query.status ? { status: String(req.query.status) } : {}) };
+    const [items, total] = await Promise.all([
+      db.collection("government_scheme_applications").find(filter, { projection: { citizenEmail: 0, citizenPhone: 0 } })
+        .sort({ submittedAt: -1 }).skip((page.page - 1) * page.pageSize).limit(page.pageSize).toArray(),
+      db.collection("government_scheme_applications").countDocuments(filter),
+    ]);
+    res.json({ items, total, page: page.page, pageSize: page.pageSize, pages: Math.max(1, Math.ceil(total / page.pageSize)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch("/api/government/admin/applications/:applicationId", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const status = req.body?.status;
+    if (!["APPROVED", "REJECTED"].includes(status)) return res.status(400).json({ error: "status must be APPROVED or REJECTED" });
+    if (status === "REJECTED" && !String(req.body?.rejectionReason || "").trim()) return res.status(400).json({ error: "A rejection reason is required" });
+    const result = await db.collection("government_scheme_applications").updateOne(
+      { ...mode, applicationId: req.params.applicationId, status: "PENDING" },
+      { $set: { status, decisionReason: String(req.body.rejectionReason || "").trim(), reviewedBy: req.authenticatedUser.userId, reviewedAt: new Date() } },
+    );
+    if (!result.modifiedCount) return res.status(404).json({ error: "Pending application not found" });
+    res.json({ success: true, applicationId: req.params.applicationId, status });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/admin/departments", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    res.json(await db.collection("government_departments").find(mode).sort({ name: 1 }).limit(200).toArray());
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/government/admin/departments", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const error = validText(req.body?.name, "name", 200);
+    if (error) return res.status(400).json({ error });
+    const department = { departmentId: `DEP-${crypto.randomUUID()}`, name: req.body.name.trim(), active: true, ...mode, createdAt: new Date() };
+    await db.collection("government_departments").insertOne(department);
+    res.status(201).json(department);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch("/api/government/admin/departments/:departmentId", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    if (req.body?.active !== undefined && typeof req.body.active !== "boolean") return res.status(400).json({ error: "active must be a boolean" });
+    const changes = { updatedAt: new Date() };
+    if (req.body?.active !== undefined) changes.active = req.body.active;
+    if (req.body?.name !== undefined) {
+      const error = validText(req.body.name, "name", 200);
+      if (error) return res.status(400).json({ error });
+      changes.name = req.body.name.trim();
+    }
+    if (Object.keys(changes).length === 1) return res.status(400).json({ error: "No department changes provided" });
+    const result = await db.collection("government_departments").updateOne({ ...mode, departmentId: req.params.departmentId }, { $set: changes });
+    if (!result.matchedCount) return res.status(404).json({ error: "Department not found" });
+    res.json({ success: true, departmentId: req.params.departmentId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post("/api/government/admin/officers", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    if (!["Admin", "Super Administrator"].includes(req.authenticatedUser.role)) {
+      return res.status(403).json({ error: "Only a super administrator can register government officers" });
+    }
+    const body = req.body || {};
+    for (const field of ["name", "email", "password", "departmentId"]) {
+      const error = validText(body[field], field, field === "password" ? 200 : 200);
+      if (error) return res.status(400).json({ error });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) return res.status(400).json({ error: "email must be valid" });
+    if (body.password.length < 12) return res.status(400).json({ error: "password must be at least 12 characters" });
+    if (!["Government Officer", "Department Administrator"].includes(body.role)) return res.status(400).json({ error: "role must be Government Officer or Department Administrator" });
+    const department = await db.collection("government_departments").findOne({ departmentId: body.departmentId, active: true });
+    if (!department) return res.status(400).json({ error: "An active department is required" });
+    if (await db.collection("users").findOne({ email: body.email.trim().toLowerCase() })) return res.status(409).json({ error: "An account already uses this email" });
+    const user = {
+      userId: `GOV-${crypto.randomUUID()}`, name: body.name.trim(), email: body.email.trim().toLowerCase(),
+      passwordHash: await bcrypt.hash(body.password, 12), role: body.role,
+      departmentId: department.departmentId, departmentName: department.name,
+      isActive: true, createdAt: new Date(), updatedAt: new Date(),
+    };
+    await db.collection("users").insertOne(user);
+    await db.collection("government_audit_logs").insertOne({
+      action: "GOVERNMENT_OFFICER_REGISTERED", actorId: req.authenticatedUser.userId,
+      targetUserId: user.userId, departmentId: department.departmentId, createdAt: new Date(),
+    });
+    const { passwordHash, _id, ...safeUser } = user;
+    res.status(201).json(safeUser);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/admin/officers", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    if (req.query.demo === "true") {
+      const [demoOfficers, workloads] = await Promise.all([
+        db.collection("government_demo_officers").find(mode, { projection: { userId: 1, name: 1, role: 1, departmentId: 1, departmentName: 1, isActive: 1, isSynthetic: 1 } }).limit(500).toArray(),
+        db.collection("government_complaints").aggregate([
+          { $match: { isSynthetic: true, assignedOfficerId: { $exists: true }, status: { $nin: ["RESOLVED", "REJECTED"] } } },
+          { $group: { _id: "$assignedOfficerId", count: { $sum: 1 } } },
+        ]).toArray(),
+      ]);
+      const workloadById = Object.fromEntries(workloads.map(item => [item._id, item.count]));
+      return res.json(demoOfficers.map(({ _id, ...officer }) => ({ ...officer, openComplaintCount: workloadById[officer.userId] || 0 })));
+    }
+    const roleFilter = {
+      role: { $in: ["Government Officer", "Department Administrator", "Super Administrator", "Admin"] },
+      isSynthetic: { $ne: true },
+    };
+    const [officers, workloads] = await Promise.all([db.collection("users").find(roleFilter, {
+      projection: { userId: 1, name: 1, fullName: 1, role: 1, departmentId: 1, departmentName: 1, isActive: 1, isSynthetic: 1 },
+    }).limit(500).toArray(), db.collection("government_complaints").aggregate([
+      { $match: { ...(req.query.demo === "true" ? { isSynthetic: true } : { isSynthetic: { $ne: true } }), assignedOfficerId: { $exists: true }, status: { $nin: ["RESOLVED", "REJECTED"] } } },
+      { $group: { _id: "$assignedOfficerId", count: { $sum: 1 } } },
+    ]).toArray()]);
+    const workloadById = Object.fromEntries(workloads.map(item => [item._id, item.count]));
+    res.json(officers.map(({ _id, ...officer }) => ({ ...officer, openComplaintCount: workloadById[officer.userId] || 0 })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch("/api/government/admin/officers/:userId", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    if (req.query.demo === "true") return res.status(403).json({ error: "Demo officer records are read-only" });
+    const changes = {};
+    if (req.body?.departmentId !== undefined || req.body?.departmentName !== undefined) {
+      if (typeof req.body.departmentId !== "string" || typeof req.body.departmentName !== "string") return res.status(400).json({ error: "departmentId and departmentName are required together" });
+      if (req.body.departmentId) {
+        const department = await db.collection("government_departments").findOne({ departmentId: req.body.departmentId, active: true });
+        if (!department) return res.status(400).json({ error: "Select an active department" });
+        changes.departmentId = department.departmentId;
+        changes.departmentName = department.name;
+      } else {
+        changes.departmentId = "";
+        changes.departmentName = "";
+      }
+    }
+    if (req.body?.isActive !== undefined) {
+      if (typeof req.body.isActive !== "boolean") return res.status(400).json({ error: "isActive must be a boolean" });
+      changes.isActive = req.body.isActive;
+    }
+    if (!Object.keys(changes).length) return res.status(400).json({ error: "No officer changes provided" });
+    changes.updatedAt = new Date();
+    const result = await db.collection("users").updateOne({
+      userId: req.params.userId,
+      role: { $in: ["Government Officer", "Department Administrator", "Super Administrator", "Admin"] },
+      isSynthetic: { $ne: true },
+    }, { $set: changes });
+    if (!result.matchedCount) return res.status(404).json({ error: "Government officer not found" });
+    res.json({ success: true, userId: req.params.userId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/government/admin/alerts", requireGovernmentAdministrator, async (req, res) => {
+  try {
+    const mode = governmentDemoFilter(req);
+    if (mode.error) return res.status(403).json({ error: mode.error });
+    const complaintDates = governmentDateFilter(req.query, "submittedAt");
+    const applicationDates = governmentDateFilter(req.query, "submittedAt");
+    if (complaintDates.error || applicationDates.error) return res.status(400).json({ error: complaintDates.error || applicationDates.error });
+    const now = new Date();
+    const dueSoonAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const [overdue, dueSoon, approvals] = await Promise.all([
+      db.collection("government_complaints").find({ ...mode, ...complaintDates, dueAt: { $lt: now }, status: { $nin: ["RESOLVED", "REJECTED"] } })
+        .project({ complaintId: 1, subject: 1, district: 1, dueAt: 1, status: 1 }).sort({ dueAt: 1 }).limit(20).toArray(),
+      db.collection("government_complaints").find({ ...mode, ...complaintDates, dueAt: { $gte: now, $lte: dueSoonAt }, status: { $nin: ["RESOLVED", "REJECTED"] } })
+        .project({ complaintId: 1, subject: 1, district: 1, dueAt: 1, status: 1 }).sort({ dueAt: 1 }).limit(20).toArray(),
+      db.collection("government_scheme_applications").find({ ...mode, ...applicationDates, status: "PENDING" })
+        .project({ applicationId: 1, schemeName: 1, submittedAt: 1 }).sort({ submittedAt: 1 }).limit(20).toArray(),
+    ]);
+    res.json({ overdue, dueSoon, approvals });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

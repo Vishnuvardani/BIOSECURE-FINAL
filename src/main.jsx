@@ -17,7 +17,9 @@ const ROLE_REVERSE = {
   "Farmer":             "farmer",
   "Veterinarian":       "veterinarian",
   "Government Officer": "government",
+  "Department Administrator": "government",
   "Admin":              "admin",
+  "Super Administrator": "admin",
 };
 
 // ── Loading ───────────────────────────────────────────────────────────────
@@ -111,6 +113,7 @@ function Root() {
     const remaining = Math.max(0, session.expiresAt - Date.now());
     const timer = window.setTimeout(() => {
       window.localStorage.removeItem(SESSION_KEY);
+      window.localStorage.removeItem("biosecure-access-token");
       setSession(null);
     }, remaining);
     return () => window.clearTimeout(timer);
@@ -140,6 +143,7 @@ function Root() {
         mongoRole={session.role}
         onLogout={() => {
           window.localStorage.removeItem(SESSION_KEY);
+          window.localStorage.removeItem("biosecure-access-token");
           setSession(null);
         }}
         language={language}

@@ -1,6 +1,7 @@
 const { spawn, spawnSync } = require("node:child_process");
 const net = require("node:net");
 const path = require("node:path");
+const http = require("node:http");
 
 const root = path.resolve(__dirname, "..");
 const children = [];
@@ -13,6 +14,19 @@ function isPortOpen(port, host = "127.0.0.1") {
     socket.once("connect", () => { socket.destroy(); resolve(true); });
     socket.once("timeout", () => { socket.destroy(); resolve(false); });
     socket.once("error", () => resolve(false));
+  });
+}
+
+function hasGovernmentAdminApi(port = 5000) {
+  return new Promise((resolve, reject) => {
+    const request = http.get({ host: "127.0.0.1", port, path: "/api/government/admin/dashboard?demo=true", timeout: 2000 }, response => {
+      response.resume();
+      if (response.statusCode === 401 || response.statusCode === 403 || response.statusCode === 200) resolve(true);
+      else if (response.statusCode === 404) resolve(false);
+      else reject(new Error(`Government administration API health probe returned HTTP ${response.statusCode}.`));
+    });
+    request.on("timeout", () => request.destroy(new Error("API health probe timed out.")));
+    request.on("error", reject);
   });
 }
 
@@ -65,6 +79,9 @@ async function start() {
     if (!await waitForPort(5000)) throw new Error("API did not start on port 5000; check the API output above.");
   } else {
     console.log("Using the existing API on port 5000.");
+  }
+  if (!await hasGovernmentAdminApi()) {
+    throw new Error("An older API server is running on port 5000 and does not include the Government Administration endpoints. Stop that API process, then run npm start again so the current server/index.js is loaded.");
   }
 
   if (!await isPortOpen(5173)) {

@@ -78,7 +78,6 @@ export const NAV_CONFIG = {
     items: [
       { label: "Dashboard",           icon: Home },
       { label: "Farm Monitoring",     icon: Eye },
-      { label: "Disease Surveillance",icon: Activity },
       { label: "Outbreak Map",        icon: MapPin, isNew: true },
       { label: "Advisories",          icon: Flag },
       { label: "Notifications",       icon: Bell, isNew: true },

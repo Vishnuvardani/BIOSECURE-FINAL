@@ -35,3 +35,17 @@ Copy `.env.example` to `.env.local` and add your OpenWeather API key. Leave `VIT
 ```powershell
 npm run build
 ```
+
+## Government administration portal
+
+The Government Officer **Dashboard** is the public-services administration workspace: overview analytics, complaint review and assignment, scheme management and application decisions, and department/officer administration. It uses the existing signed-in API session and separate MongoDB collections (`government_citizens`, `government_complaints`, `government_schemes`, `government_scheme_applications`, `government_departments`). It does not repurpose livestock disease reports as citizen complaints.
+
+Start the local app with `npm start`. If a pre-existing API process is using port 5000, the launcher checks for the government administration endpoint and reports when that process must be restarted. Authenticated endpoints are under `/api/government/admin/` for dashboard metrics, complaints, schemes/applications, departments/officers, and alerts. Complaint lists support search, department, district, priority, status, date, sorting, and pagination. Officer activation and government-officer creation are enforced by server-side role checks; passwords are bcrypt-hashed.
+
+For local development only, synthetic records may be added explicitly:
+
+```powershell
+node scripts/seed-government-demo.js --confirm
+```
+
+The seeder refuses remote MongoDB hosts and production mode, uses deterministic `*-DEMO-*` identifiers, marks all seed documents `isSynthetic`, and never overwrites existing records. The Development demo data toggle queries only synthetic records; production disables this mode. Seeded citizen identities are fictional references only. Do not use the demo dataset as real statistics.
