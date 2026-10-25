@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AlertTriangle, FileText, MapPin, CheckCircle, Clock, Eye, RefreshCw } from "lucide-react";
+import { AlertTriangle, FileText, MapPin, CheckCircle, Clock, Eye, RefreshCw, Send, Check } from "lucide-react";
 import { submitDiseaseReport, getDiseaseReports, updateDiseaseStatus } from "../../api/mongoService";
 import { formatDate, formatDateTime } from "../../utils/dateTime";
 
@@ -13,10 +13,25 @@ const P = {
   olive: "#808034", oliveDark: "#5c5c24", ivoryDark: "#f0f0d8",
 };
 
-const PIG_DISEASES = ["African Swine Fever (ASF)", "Swine Influenza", "Classical Swine Fever (CSF)", "PRRS", "Porcine Epidemic Diarrhea (PED)", "Swine Erysipelas", "Other"];
-const POULTRY_DISEASES = ["Avian Influenza / Bird Flu (HPAI)", "Newcastle Disease", "Infectious Bursal Disease (IBD)", "Marek's Disease", "Infectious Bronchitis", "Fowl Cholera", "Other"];
-const SYMPTOMS_PIG = ["Fever", "Loss of appetite", "Skin lesions / blotches", "Respiratory distress", "Sudden death", "Vomiting / diarrhea", "Lameness", "Reproductive failure", "Neurological signs"];
-const SYMPTOMS_POULTRY = ["Sudden high mortality", "Respiratory distress", "Drop in egg production", "Swollen head / face", "Greenish diarrhea", "Nervous signs / tremors", "Loss of appetite", "Nasal discharge"];
+const PIG_DISEASES = [
+  "African Swine Fever (ASF)", "Swine Influenza", "Classical Swine Fever (CSF)",
+  "PRRS", "Porcine Epidemic Diarrhea (PED)", "Swine Erysipelas", "Other"
+];
+
+const POULTRY_DISEASES = [
+  "Avian Influenza / Bird Flu (HPAI)", "Newcastle Disease", "Infectious Bursal Disease (IBD)",
+  "Marek's Disease", "Infectious Bronchitis", "Fowl Cholera", "Other"
+];
+
+const SYMPTOMS_PIG = [
+  "Fever", "Loss of appetite", "Skin lesions / blotches", "Respiratory distress",
+  "Sudden death", "Vomiting / diarrhea", "Lameness", "Reproductive failure", "Neurological signs"
+];
+
+const SYMPTOMS_POULTRY = [
+  "Sudden high mortality", "Respiratory distress", "Drop in egg production",
+  "Swollen head / face", "Greenish diarrhea", "Nervous signs / tremors", "Loss of appetite", "Nasal discharge"
+];
 
 const STATUS_CONFIG = {
   REPORTED:               { color: P.blue,   bg: P.blueBg,   label: "Reported" },
@@ -26,6 +41,8 @@ const STATUS_CONFIG = {
   RULED_OUT:              { color: P.green,  bg: P.greenBg,  label: "Ruled Out" },
   RESOLVED:               { color: P.gray,   bg: "#f3f4f6",  label: "Resolved" },
 };
+
+const STATUS_OPTS = ["REPORTED", "UNDER_REVIEW", "VETERINARY_INSPECTION", "CONFIRMED", "RULED_OUT", "RESOLVED"];
 
 const SEVERITY_OPTIONS = [
   { value: "LOW",      color: P.green,  bg: P.greenBg },
@@ -43,7 +60,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function ReportCard({ report, onView }) {
+function ReportCard({ report, onView, isVet, onStatusChange }) {
   return (
     <div style={{ background: P.white, borderRadius: 14, border: `1.5px solid ${report.riskLevel === "HIGH" ? P.red + "40" : "#e5e7eb"}`, padding: "14px 18px", marginBottom: 10 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
@@ -66,31 +83,63 @@ function ReportCard({ report, onView }) {
           </span>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
         <button onClick={() => onView(report)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: P.blueBg, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, color: P.blue }}>
           <Eye size={12} /> View Details
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 8, background: "#f3f4f6", fontSize: 11, color: P.gray }}>
-          <MapPin size={11} /> {report.latitude?.toFixed(4) || "N/A"}, {report.longitude?.toFixed(4) || "N/A"}
+          <MapPin size={11} /> {report.latitude?.toFixed ? report.latitude.toFixed(4) : (report.latitude || "N/A")}, {report.longitude?.toFixed ? report.longitude.toFixed(4) : (report.longitude || "N/A")}
         </div>
+        {isVet && onStatusChange && (
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, color: P.gray, fontWeight: 600 }}>Change Status:</span>
+            <select
+              value={report.status}
+              onChange={e => onStatusChange(report.reportId, e.target.value)}
+              style={{ padding: "5px 10px", borderRadius: 8, border: "1.5px solid #d1d5db", fontSize: 11, fontWeight: 700, color: P.purple, background: P.white, cursor: "pointer", outline: "none" }}
+            >
+              {STATUS_OPTS.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+            </select>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function ReportDetailModal({ report, onClose }) {
+function ReportDetailModal({ report, onClose, isVet, onStatusChange }) {
   if (!report) return null;
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ background: P.white, borderRadius: 20, padding: 28, maxWidth: 560, width: "100%", maxHeight: "85vh", overflowY: "auto" }}>
+      <div style={{ background: P.white, borderRadius: 20, padding: 28, maxWidth: 580, width: "100%", maxHeight: "85vh", overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <h3 style={{ fontFamily: "Poppins", fontSize: 16, fontWeight: 700, color: P.dark, margin: 0 }}>Disease Report Details</h3>
           <button onClick={onClose} style={{ background: "#f3f4f6", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, color: P.gray }}>Close</button>
         </div>
+
+        {isVet && onStatusChange && (
+          <div style={{ background: P.purpleBg, border: `1.5px solid ${P.purple}30`, borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 700, color: P.purple, margin: 0 }}>Update Report Status (Vet Action)</p>
+                <p style={{ fontSize: 11, color: P.gray, margin: "2px 0 0" }}>Changes will trigger an email to registered farmer with farm details and record an app notification.</p>
+              </div>
+              <select
+                value={report.status}
+                onChange={e => onStatusChange(report.reportId, e.target.value)}
+                style={{ padding: "8px 12px", borderRadius: 10, border: `1.5px solid ${P.purple}`, fontSize: 12, fontWeight: 700, color: P.purple, background: P.white, cursor: "pointer", outline: "none" }}
+              >
+                {STATUS_OPTS.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+
         <div style={{ background: P.redBg, borderRadius: 12, padding: 14, marginBottom: 16, border: `1px solid ${P.red}20` }}>
           <p style={{ fontSize: 11, color: P.red, fontWeight: 600, margin: "0 0 4px" }}>⚠ SUSPECTED DISEASE REPORT — NOT A CONFIRMED DIAGNOSIS</p>
           <p style={{ fontSize: 11, color: P.gray, margin: 0 }}>Final diagnosis will be updated by the veterinarian after inspection and testing.</p>
         </div>
+
         {[
           ["Report ID", report.reportId],
           ["Farm ID", report.farmId],
@@ -104,7 +153,7 @@ function ReportDetailModal({ report, onClose }) {
           ["Risk Level", report.riskLevel],
           ["Status", report.status],
           ["Reported Date", formatDateTime(report.reportedDate)],
-          ["Location", `${report.latitude}, ${report.longitude}`],
+          ["Location", `${report.latitude || "N/A"}, ${report.longitude || "N/A"}`],
         ].map(([k, v]) => (
           <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f3f4f6" }}>
             <span style={{ fontSize: 12, color: P.gray }}>{k}</span>
@@ -140,8 +189,9 @@ function ReportDetailModal({ report, onClose }) {
   );
 }
 
-export default function DiseaseReportModule({ farms = [], user }) {
-  const [tab, setTab] = useState("report");
+export default function DiseaseReportModule({ farms = [], user, role }) {
+  const isVet = role === "veterinarian" || user?.role === "veterinarian";
+  const [tab, setTab] = useState(isVet ? "history" : "report");
   const [form, setForm] = useState({ farmId: "", animalType: "", suspectedDisease: "", otherDisease: "", symptoms: [], affectedAnimals: "", deaths: "", symptomStartDate: "", severity: "", remarks: "", latitude: "", longitude: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(null);
@@ -149,6 +199,7 @@ export default function DiseaseReportModule({ farms = [], user }) {
   const [loadingReports, setLoadingReports] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   const [error, setError] = useState("");
+  const [vetNotice, setVetNotice] = useState("");
 
   const diseases = form.animalType === "Pig" ? PIG_DISEASES : form.animalType === "Poultry" ? POULTRY_DISEASES : [];
   const symptoms = form.animalType === "Pig" ? SYMPTOMS_PIG : form.animalType === "Poultry" ? SYMPTOMS_POULTRY : [];
@@ -162,7 +213,11 @@ export default function DiseaseReportModule({ farms = [], user }) {
     finally { setLoadingReports(false); }
   };
 
-  useEffect(() => { if (tab === "history") loadReports(); }, [tab]);
+  useEffect(() => {
+    if (isVet || tab === "history") {
+      loadReports();
+    }
+  }, [isVet, tab]);
 
   const toggleSymptom = (s) => setForm(f => ({
     ...f, symptoms: f.symptoms.includes(s) ? f.symptoms.filter(x => x !== s) : [...f.symptoms, s]
@@ -180,13 +235,38 @@ export default function DiseaseReportModule({ farms = [], user }) {
       return setError("Please fill all required fields.");
     setError(""); setSubmitting(true);
     try {
-      const payload = { ...form, farmerId: user?.userId || "unknown", affectedAnimals: Number(form.affectedAnimals) || 0, deaths: Number(form.deaths) || 0, latitude: form.latitude.trim() ? Number(form.latitude) : null, longitude: form.longitude.trim() ? Number(form.longitude) : null };
+      const payload = {
+        ...form,
+        farmerId: user?.userId || "unknown",
+        affectedAnimals: Number(form.affectedAnimals) || 0,
+        deaths: Number(form.deaths) || 0,
+        latitude: form.latitude && form.latitude.trim() ? Number(form.latitude) : null,
+        longitude: form.longitude && form.longitude.trim() ? Number(form.longitude) : null,
+      };
       const res = await submitDiseaseReport(payload);
       setSubmitted(res);
       setForm({ farmId: "", animalType: "", suspectedDisease: "", otherDisease: "", symptoms: [], affectedAnimals: "", deaths: "", symptomStartDate: "", severity: "", remarks: "", latitude: "", longitude: "" });
     } catch (e) {
       setError("Submission failed: " + e.message);
     } finally { setSubmitting(false); }
+  };
+
+  const handleVetStatusChange = async (reportId, status) => {
+    try {
+      const res = await updateDiseaseStatus(reportId, {
+        status,
+        vetEmail: user?.email,
+        vetName: user?.fullName || user?.name || "Dr. Priya Vishnu"
+      });
+      setReports(rs => rs.map(r => r.reportId === reportId ? { ...r, status } : r));
+      setSelectedReport(r => r && r.reportId === reportId ? { ...r, status } : r);
+      const farmerDetail = res?.farmerEmail ? ` Farm details & status change emailed to ${res.farmerEmail}.` : " Details emailed to registered farmer.";
+      setVetNotice(`Status updated to ${status.replace(/_/g, " ")}!${farmerDetail} In-app notification created.`);
+      setTimeout(() => setVetNotice(""), 6000);
+    } catch (e) {
+      console.error(e);
+      alert("Status update failed: " + e.message);
+    }
   };
 
   return (
@@ -197,23 +277,40 @@ export default function DiseaseReportModule({ farms = [], user }) {
           <AlertTriangle size={22} color={P.white} />
         </div>
         <div>
-          <h2 style={{ fontFamily: "Poppins", fontSize: 17, fontWeight: 700, color: P.dark, margin: 0 }}>Disease Reporting</h2>
-          <p style={{ fontSize: 11, color: P.gray, margin: "2px 0 0" }}>Report suspected disease symptoms — all reports are classified as "Suspected" until confirmed by a veterinarian</p>
+          <h2 style={{ fontFamily: "Poppins", fontSize: 17, fontWeight: 700, color: P.dark, margin: 0 }}>
+            {isVet ? "Disease Reports" : "Disease Reporting"}
+          </h2>
+          <p style={{ fontSize: 12, color: P.gray, margin: "2px 0 0" }}>
+            {isVet ? "Review reports, update status, and notify farmers automatically via email" : "Report suspected disease symptoms for veterinarian review and risk zoning"}
+          </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[["report", "Report Disease", FileText], ["history", "My Reports", Clock]].map(([id, label, Icon]) => (
-          <button key={id} onClick={() => setTab(id)}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: tab === id ? P.red : P.ivoryDark, color: tab === id ? P.white : P.gray, transition: "all 0.15s" }}>
-            <Icon size={14} />{label}
-          </button>
-        ))}
-      </div>
+      {/* Vet Notice Banner */}
+      {isVet && vetNotice && (
+        <div style={{ background: P.greenBg, border: `1.5px solid ${P.greenLight}50`, borderRadius: 12, padding: "12px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+          <CheckCircle size={18} color={P.greenLight} style={{ flexShrink: 0 }} />
+          <p style={{ fontSize: 12, color: P.green, fontWeight: 600, margin: 0 }}>{vetNotice}</p>
+        </div>
+      )}
 
-      {/* Success Banner */}
-      {submitted && (
+      {/* Tabs (Farmer / non-vet module) */}
+      {!isVet && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {[
+            { id: "report", label: "Report a Disease", icon: AlertTriangle },
+            { id: "history", label: "Report History", icon: FileText },
+          ].map(({ id, label, icon: Icon }) => (
+            <button key={id} onClick={() => setTab(id)}
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: tab === id ? P.red : P.ivoryDark, color: tab === id ? P.white : P.dark, transition: "all 0.15s" }}>
+              <Icon size={14} />{label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Success Banner (Farmer) */}
+      {!isVet && submitted && (
         <div style={{ background: P.greenBg, border: `1.5px solid ${P.greenLight}40`, borderRadius: 14, padding: "14px 18px", marginBottom: 16, display: "flex", alignItems: "flex-start", gap: 12 }}>
           <CheckCircle size={20} color={P.greenLight} style={{ flexShrink: 0, marginTop: 1 }} />
           <div>
@@ -225,7 +322,8 @@ export default function DiseaseReportModule({ farms = [], user }) {
         </div>
       )}
 
-      {tab === "report" && (
+      {/* Farmer Report Form */}
+      {!isVet && tab === "report" && (
         <div>
           {/* Disclaimer */}
           <div style={{ background: P.yellowBg, border: `1px solid ${P.yellow}40`, borderRadius: 12, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#92400e" }}>
@@ -309,6 +407,17 @@ export default function DiseaseReportModule({ farms = [], user }) {
                   style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: 13, color: P.dark, outline: "none", boxSizing: "border-box" }} />
               </div>
 
+              {/* Location detection */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: P.gray, display: "block", marginBottom: 6 }}>GPS Coordinates</label>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input readOnly value={form.latitude && form.longitude ? `${form.latitude}, ${form.longitude}` : ""} placeholder="Not detected" style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: 12, color: P.dark, background: "#f9fafb" }} />
+                  <button type="button" onClick={getLocation} style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 12px", borderRadius: 10, background: P.ivoryDark, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 600, color: P.dark }}>
+                    <MapPin size={12} /> Detect
+                  </button>
+                </div>
+              </div>
+
             </div>
 
             {/* Symptoms */}
@@ -317,7 +426,7 @@ export default function DiseaseReportModule({ farms = [], user }) {
                 <label style={{ fontSize: 12, fontWeight: 600, color: P.gray, display: "block", marginBottom: 8 }}>Symptoms Observed (select all that apply)</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {symptoms.map(s => (
-                    <button key={s} onClick={() => toggleSymptom(s)}
+                    <button key={s} type="button" onClick={() => toggleSymptom(s)}
                       style={{ padding: "6px 12px", borderRadius: 10, border: `1.5px solid ${form.symptoms.includes(s) ? P.red : "#e5e7eb"}`, background: form.symptoms.includes(s) ? P.redBg : P.white, cursor: "pointer", fontSize: 11, fontWeight: 600, color: form.symptoms.includes(s) ? P.red : P.gray }}>
                       {s}
                     </button>
@@ -345,7 +454,8 @@ export default function DiseaseReportModule({ farms = [], user }) {
         </div>
       )}
 
-      {tab === "history" && (
+      {/* History view (Shown for Vet directly, or for Farmer when History tab is selected) */}
+      {(isVet || tab === "history") && (
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: P.dark }}>{reports.length} report(s) found</span>
@@ -361,12 +471,25 @@ export default function DiseaseReportModule({ farms = [], user }) {
               <p style={{ margin: 0 }}>No disease reports found</p>
             </div>
           ) : (
-            reports.map(r => <ReportCard key={r.reportId} report={r} onView={setSelectedReport} />)
+            reports.map(r => (
+              <ReportCard
+                key={r.reportId}
+                report={r}
+                onView={setSelectedReport}
+                isVet={isVet}
+                onStatusChange={isVet ? handleVetStatusChange : null}
+              />
+            ))
           )}
         </div>
       )}
 
-      <ReportDetailModal report={selectedReport} onClose={() => setSelectedReport(null)} />
+      <ReportDetailModal
+        report={selectedReport}
+        onClose={() => setSelectedReport(null)}
+        isVet={isVet}
+        onStatusChange={isVet ? handleVetStatusChange : null}
+      />
     </div>
   );
 }
