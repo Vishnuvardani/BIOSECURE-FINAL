@@ -228,6 +228,7 @@ function Topbar({ activeModule, onLogout, language = "en" }) {
       <div style={{ display: "flex", alignItems: "center", gap: 4, padding: 3, borderRadius: 8, background: P.ivoryDark }} aria-label="Language">
         <button type="button" onClick={() => changeLanguage("en")} style={{ border: "none", borderRadius: 6, padding: "5px 8px", cursor: "pointer", fontSize: 11, fontWeight: 700, background: language === "en" ? P.olive : "transparent", color: language === "en" ? P.white : P.mid }}>English</button>
         <button type="button" onClick={() => changeLanguage("ta")} style={{ border: "none", borderRadius: 6, padding: "5px 8px", cursor: "pointer", fontSize: 11, fontWeight: 700, background: language === "ta" ? P.olive : "transparent", color: language === "ta" ? P.white : P.mid }}>தமிழ்</button>
+        <button type="button" onClick={() => changeLanguage("hi")} style={{ border: "none", borderRadius: 6, padding: "5px 8px", cursor: "pointer", fontSize: 11, fontWeight: 700, background: language === "hi" ? P.olive : "transparent", color: language === "hi" ? P.white : P.mid }}>हिन्दी</button>
       </div>
       <button onClick={onLogout} title="Log out" style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 12px", border: "1px solid rgba(128,128,52,0.2)", borderRadius: 10, background: P.ivoryDark, color: P.mid, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
         <LogOut size={14} />

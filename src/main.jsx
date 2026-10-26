@@ -101,7 +101,7 @@ function Root() {
   const [language, setLanguage] = useState(() => window.localStorage.getItem("biosecure-language") || "en");
 
   useEffect(() => {
-    const handleLanguageChange = event => setLanguage(event.detail === "ta" ? "ta" : "en");
+    const handleLanguageChange = event => setLanguage(["en", "ta", "hi"].includes(event.detail) ? event.detail : "en");
     window.addEventListener("biosecure-language-change", handleLanguageChange);
     return () => window.removeEventListener("biosecure-language-change", handleLanguageChange);
   }, []);
