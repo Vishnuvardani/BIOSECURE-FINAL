@@ -23,6 +23,7 @@ const reportRoutes = require('./routes/reports');
 const healthRoutes = require('./routes/health');
 const inventoryRoutes = require('./routes/inventory');
 const farmActivityRoutes = require('./routes/farmActivities');
+const appointmentRoutes = require('./routes/appointments');
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/health-records', healthRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/farm-activities', farmActivityRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'OK', timestamp: new Date() }));
 

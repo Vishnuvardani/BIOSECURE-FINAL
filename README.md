@@ -1,6 +1,6 @@
 # BioSecure Farm
 
-BioSecure Farm is a pig and poultry farm intelligence platform for animal health, biosecurity, disease alerts, farm locations, veterinary services, and compliance.
+and poultry farm intelligence platform for animal health, biosecurity, disease alerts, farm locations, veterinary services, and compliance.
 
 ## Run locally
 

@@ -3471,7 +3471,7 @@ const navConfig = {
     color: "#1e0838",
     accent: P.purple,
     title: "Vet Portal",
-    items: [{ key: "Dashboard", labelKey: "dashboard", label: "Dashboard", icon: Home }, { key: "Assigned Farms", labelKey: "assignedFarms", label: "Assigned Farms", icon: Leaf }, { key: "Inspection", labelKey: "inspection", label: "Inspection", icon: ClipboardList }, { key: "Health Records", labelKey: "healthRecords", label: "Health Records", icon: FileText }, { key: "Vaccination", labelKey: "vaccination", label: "Vaccination", icon: Syringe }, { key: "Disease Report", labelKey: "diseaseReport", label: "Disease Report", icon: AlertTriangle }, { key: "AI Recommendation", labelKey: "aiRecommendation", label: "AI Recommendation", icon: Zap }, { key: "Reports", labelKey: "reports", label: "Reports", icon: BarChart2 }, { key: "Profile", labelKey: "profile", label: "Profile", icon: User }]
+    items: [{ key: "Dashboard", labelKey: "dashboard", label: "Dashboard", icon: Home }, { key: "Health Records", labelKey: "healthRecords", label: "Health Records", icon: FileText }, { key: "Vaccination", labelKey: "vaccination", label: "Vaccination", icon: Syringe }, { key: "Disease Report", labelKey: "diseaseReport", label: "Disease Report", icon: AlertTriangle }, { key: "Reports", labelKey: "reports", label: "Reports", icon: BarChart2 }, { key: "Profile", labelKey: "profile", label: "Profile", icon: User }]
   },
   government: {
     color: "#0d1a2d",
@@ -3517,18 +3517,12 @@ function renderPage(role, module, user, data = {}, language = "en", onNavigate) 
     switch (module) {
       case "Dashboard":
         return /* @__PURE__ */ jsx(VetDashboardPage, {});
-      case "Assigned Farms":
-        return /* @__PURE__ */ jsx(AssignedFarmsPage, {});
-      case "Inspection":
-        return /* @__PURE__ */ jsx(InspectionPage, {});
       case "Health Records":
         return /* @__PURE__ */ jsx(HealthRecordsPage, {});
       case "Vaccination":
         return /* @__PURE__ */ jsx(VaccinationPage, { vaccinations: data.vaccinations || [] });
       case "Disease Report":
         return /* @__PURE__ */ jsx(DiseaseReportPage, {});
-      case "AI Recommendation":
-        return /* @__PURE__ */ jsx(AIAssistantPage, {});
       case "Reports":
         return /* @__PURE__ */ jsx(ReportsPage, {});
       case "Profile":
