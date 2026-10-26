@@ -3,9 +3,10 @@
  * Fetches data from the configured Express API -> MongoDB.
  */
 
-const localApiBase =
-  typeof window === "undefined"
-    ? "http://localhost:5000/api"
+const localApiBase = typeof window === "undefined"
+  ? "http://localhost:5000/api"
+  : import.meta.env.DEV
+    ? `${window.location.protocol}//${window.location.hostname}:5000/api`
     : "https://biosecure-final.onrender.com/api";
 
 export const API_BASE = (
